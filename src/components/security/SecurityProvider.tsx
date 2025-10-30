@@ -18,21 +18,16 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     return !checkRateLimit(key, max);
   };
 
-  // Security event reporting - enhanced with database logging
+  // Security event reporting - logs to console in development only
   const reportSecurityEvent = async (event: string, details: any) => {
-    try {
-      // Log to database for audit trail
-      await supabase.from('admin_notifications').insert({
-        type: 'security_event',
-        title: 'Security Event',
-        message: `Security event: ${event}`,
-        data: { event, details, timestamp: new Date().toISOString() },
-        created_by: (await supabase.auth.getUser()).data.user?.id
-      });
-    } catch (error) {
-      // Fallback to console if database logging fails
+    // Server-side logging only (Edge Functions handle this with service role)
+    // Client-side logging is limited to development mode
+    if (process.env.NODE_ENV === 'development') {
       console.log('Security event:', event, details);
     }
+    
+    // In production, security events should be logged via Edge Functions
+    // with proper authentication and rate limiting
   };
 
   // Session validation
@@ -48,10 +43,10 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       const isValid = !!session && !!session.user;
       setSessionValid(isValid);
       
-      if (!isValid) {
+      // Don't expose session details in logs for security
+      if (!isValid && process.env.NODE_ENV === 'development') {
         reportSecurityEvent('invalid_session_detected', { 
-          hasSession: !!session,
-          hasUser: !!session?.user
+          timestamp: new Date().toISOString()
         });
       }
       

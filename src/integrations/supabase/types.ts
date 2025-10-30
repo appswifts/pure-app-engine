@@ -55,6 +55,7 @@ export type Database = {
       admin_notifications: {
         Row: {
           created_at: string | null
+          created_by: string | null
           data: Json | null
           id: string
           message: string
@@ -67,6 +68,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           data?: Json | null
           id?: string
           message: string
@@ -79,6 +81,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           data?: Json | null
           id?: string
           message?: string
@@ -92,69 +95,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "admin_notifications_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_imports: {
-        Row: {
-          category_id: string | null
-          completed_at: string | null
-          created_at: string | null
-          error_message: string | null
-          extracted_data: Json | null
-          file_name: string
-          file_type: string
-          file_url: string
-          id: string
-          items_imported: number | null
-          restaurant_id: string
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          category_id?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          extracted_data?: Json | null
-          file_name: string
-          file_type: string
-          file_url: string
-          id?: string
-          items_imported?: number | null
-          restaurant_id: string
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          category_id?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          extracted_data?: Json | null
-          file_name?: string
-          file_type?: string
-          file_url?: string
-          id?: string
-          items_imported?: number | null
-          restaurant_id?: string
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_imports_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_imports_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
@@ -514,28 +454,37 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          email: string
           first_name: string | null
+          full_name: string | null
           id: string
           last_name: string | null
           phone: string | null
+          role: string
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          email: string
           first_name?: string | null
+          full_name?: string | null
           id: string
           last_name?: string | null
           phone?: string | null
+          role?: string
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          email?: string
           first_name?: string | null
+          full_name?: string | null
           id?: string
           last_name?: string | null
           phone?: string | null
+          role?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -676,6 +625,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_audit_log: {
+        Row: {
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          operation: string
+          table_name: string
+          timestamp: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          operation: string
+          table_name: string
+          timestamp?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          operation?: string
+          table_name?: string
+          timestamp?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       subscription_plans: {
         Row: {
@@ -932,6 +920,7 @@ export type Database = {
         Args: { _restaurant_id: string }
         Returns: boolean
       }
+      cleanup_old_audit_logs: { Args: never; Returns: undefined }
       create_user_subscription: {
         Args: {
           p_billing_interval?: string
@@ -942,7 +931,7 @@ export type Database = {
         Returns: string
       }
       get_admin_dashboard_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_restaurants: number
           recent_signups: number
@@ -1002,30 +991,20 @@ export type Database = {
           whatsapp_button_text: string
         }[]
       }
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      get_user_role: { Args: { _user_id: string }; Returns: string }
       has_system_role: {
         Args: { _role: string; _user_id: string }
         Returns: boolean
       }
-      is_admin: {
-        Args: Record<PropertyKey, never> | { _user_id: string }
-        Returns: boolean
-      }
+      is_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { _user_id: string }; Returns: boolean }
       user_owns_restaurant: {
         Args: { restaurant_id: string }
         Returns: boolean
       }
-      validate_whatsapp_number: {
-        Args: { _number: string }
-        Returns: boolean
-      }
-      verify_admin_access: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
+      validate_whatsapp_number: { Args: { _number: string }; Returns: boolean }
+      verify_admin_access: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       admin_role: "super_admin" | "admin"

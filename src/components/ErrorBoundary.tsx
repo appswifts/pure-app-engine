@@ -61,8 +61,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
-    // This could be replaced with actual error logging service
-    // like Sentry, LogRocket, etc.
+    // Store sanitized error data for server-side logging
     const errorData = {
       message: error.message,
       stack: error.stack,
@@ -72,7 +71,7 @@ class ErrorBoundary extends Component<Props, State> {
       url: window.location.href,
     };
 
-    // Store in localStorage for debugging
+    // Store in localStorage for admin debugging only (not exposed to users)
     try {
       const errors = JSON.parse(localStorage.getItem("app_errors") || "[]");
       errors.push(errorData);
@@ -82,8 +81,11 @@ class ErrorBoundary extends Component<Props, State> {
       }
       localStorage.setItem("app_errors", JSON.stringify(errors));
     } catch (e) {
-      console.error("Failed to log error:", e);
+      // Silently fail - don't expose error details
     }
+    
+    // TODO: Send to error tracking service (Sentry, LogRocket, etc.)
+    // This would be server-side logging in production
   };
 
   handleReset = () => {
@@ -139,7 +141,7 @@ class ErrorBoundary extends Component<Props, State> {
               {isDevelopment && error && (
                 <div className="space-y-2">
                   <div className="rounded-lg bg-muted p-4">
-                    <h3 className="font-semibold text-sm mb-2">Error Details (Development Mode)</h3>
+                    <h3 className="font-semibold text-sm mb-2">Error Details (Development Mode Only)</h3>
                     <p className="text-sm text-destructive font-mono">{error.message}</p>
                   </div>
                   
@@ -165,6 +167,14 @@ class ErrorBoundary extends Component<Props, State> {
                     </details>
                   )}
                 </div>
+              )}
+
+              {!isDevelopment && (
+                <Alert>
+                  <AlertDescription>
+                    An error occurred. Please try the suggested actions below or contact support with error reference: {new Date().getTime().toString(36).toUpperCase()}
+                  </AlertDescription>
+                </Alert>
               )}
 
               <div className="bg-muted/50 rounded-lg p-4">

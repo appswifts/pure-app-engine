@@ -127,26 +127,29 @@ class ErrorService {
   }
 
   /**
-   * Send error to server (could be Supabase, Sentry, etc.)
+   * Send error to server (only in development - production uses server-side logging)
    */
   private async sendErrorToServer(errorLog: ErrorLog): Promise<void> {
     try {
-      // In production, you might want to send this to a dedicated error tracking service
-      // For now, we'll just log it to console
+      // Only log detailed errors in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Error logged:", errorLog);
+      }
       
-      // Example: Send to Supabase logs table (if you have one)
-      // await supabase.from("error_logs").insert(errorLog);
+      // In production, errors should be sent to a secure backend endpoint
+      // Never send detailed error info directly from client
+      // TODO: Implement secure error reporting via Edge Function
       
-      // Example: Send to external service
-      // await fetch("https://your-error-service.com/log", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(errorLog),
+      // Example production approach:
+      // await supabase.functions.invoke('log-error', {
+      //   body: {
+      //     errorType: errorLog.errorType,
+      //     timestamp: errorLog.timestamp,
+      //     // Don't send full stack traces or sensitive data
+      //   }
       // });
-      
-      console.log("Error would be sent to server:", errorLog);
     } catch (e) {
-      console.error("Failed to send error to server:", e);
+      // Silently fail - don't expose logging failures
     }
   }
 
