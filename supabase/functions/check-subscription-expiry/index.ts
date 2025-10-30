@@ -55,7 +55,11 @@ serve(async (req) => {
     }
 
     let notificationsSent = 0;
-    const results = {
+    const results: {
+      sevenDay: Array<{ restaurant: string; status: string; error?: any; days?: number }>;
+      threeDay: Array<{ restaurant: string; status: string; error?: any; days?: number }>;
+      expired: Array<{ restaurant: string; status: string; error?: any }>;
+    } = {
       sevenDay: [],
       threeDay: [],
       expired: []
@@ -92,7 +96,8 @@ serve(async (req) => {
             }
           } catch (error) {
             console.error(`Error sending 7-day warning to ${restaurant.name}:`, error);
-            results.sevenDay.push({ restaurant: restaurant.name, status: 'error', error: error.message });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            results.sevenDay.push({ restaurant: restaurant.name, status: 'error', error: errorMessage });
           }
         }
       }
@@ -129,7 +134,8 @@ serve(async (req) => {
             }
           } catch (error) {
             console.error(`Error sending 3-day warning to ${restaurant.name}:`, error);
-            results.threeDay.push({ restaurant: restaurant.name, status: 'error', error: error.message });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            results.threeDay.push({ restaurant: restaurant.name, status: 'error', error: errorMessage });
           }
         }
       }
@@ -160,7 +166,8 @@ serve(async (req) => {
             }
           } catch (error) {
             console.error(`Error sending expiry notification to ${restaurant.name}:`, error);
-            results.expired.push({ restaurant: restaurant.name, status: 'error', error: error.message });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            results.expired.push({ restaurant: restaurant.name, status: 'error', error: errorMessage });
           }
         }
       }
@@ -190,10 +197,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in subscription expiry check:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message,
+        error: errorMessage,
         timestamp: new Date().toISOString()
       }),
       {

@@ -45,7 +45,8 @@ serve(async (req) => {
       logStep("Event verified", { type: event.type, id: event.id });
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
-      return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+      const errorMessage = err instanceof Error ? err.message : 'Signature verification failed';
+      return new Response(`Webhook Error: ${errorMessage}`, { status: 400 });
     }
 
     // Use service role key for database operations

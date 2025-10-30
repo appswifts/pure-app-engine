@@ -91,7 +91,13 @@ serve(async (req) => {
       limit: 1,
     });
 
-    let subscriptionData = {
+    let subscriptionData: {
+      subscribed: boolean;
+      status: string;
+      subscription_tier: string | null;
+      subscription_end: string | null;
+      trial_end: string | null;
+    } = {
       subscribed: false,
       status: 'inactive',
       subscription_tier: null,

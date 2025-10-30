@@ -138,28 +138,21 @@ export default function AIMenuImport() {
 
   const fetchMenuGroups = async (restaurantId: string) => {
     try {
-      const { data, error} = await supabase
-        .from('menu_groups')
-        .select('id, name, restaurant_id')
-        .eq('restaurant_id', restaurantId)
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) throw error;
-
-      setMenuGroups(data || []);
+      // Note: There's no menu_groups table - categories belong directly to restaurants
+      // This function is kept for backwards compatibility but returns empty
+      setMenuGroups([]);
     } catch (error: any) {
       console.error('Error fetching menu groups:', error);
       toast.error('Failed to load menu groups');
     }
   };
 
-  const fetchCategories = async (menuGroupId: string) => {
+  const fetchCategories = async (restaurantId: string) => {
     try {
       const { data, error } = await supabase
         .from('categories')
         .select('id, name')
-        .eq('menu_group_id', menuGroupId)
+        .eq('restaurant_id', restaurantId)
         .eq('is_active', true)
         .order('display_order');
 
@@ -343,18 +336,19 @@ export default function AIMenuImport() {
         importedCount += itemsToInsert.length;
       }
 
-      // Record the import
-      await supabase.from('ai_imports').insert({
-        restaurant_id: selectedRestaurant,
-        category_id: selectedCategory || null,
-        file_url: '', // You can upload file to Supabase Storage if needed
-        file_name: selectedFile?.name || 'unknown',
-        file_type: selectedFile?.type || 'image/*',
-        status: 'completed',
-        extracted_data: data,
-        items_imported: importedCount,
-        completed_at: new Date().toISOString(),
-      });
+      // Record the import (optional - ai_imports table doesn't exist yet)
+      // You can uncomment this after creating the ai_imports table
+      // await supabase.from('ai_imports').insert({
+      //   restaurant_id: selectedRestaurant,
+      //   category_id: selectedCategory || null,
+      //   file_url: '',
+      //   file_name: selectedFile?.name || 'unknown',
+      //   file_type: selectedFile?.type || 'image/*',
+      //   status: 'completed',
+      //   extracted_data: data,
+      //   items_imported: importedCount,
+      //   completed_at: new Date().toISOString(),
+      // });
 
       setCurrentStep('complete');
       toast.success(`Successfully imported ${importedCount} menu items!`);

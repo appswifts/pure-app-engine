@@ -147,10 +147,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error sending WhatsApp notification:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send WhatsApp notification';
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Failed to send WhatsApp notification',
-        details: error
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : String(error)
       }),
       {
         status: 500,

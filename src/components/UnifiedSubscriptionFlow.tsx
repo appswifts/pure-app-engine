@@ -300,8 +300,7 @@ const UnifiedSubscriptionFlow: React.FC = () => {
                 amount={selectedPlan.price}
                 currency={selectedPlan.currency}
                 billingInterval={selectedPlan.billing_interval as 'monthly' | 'yearly'}
-                className="w-full"
-                disabled
+                className="w-full opacity-50 cursor-not-allowed"
               >
                 Stripe Payment (Coming Soon)
               </StripeCheckoutButton>
