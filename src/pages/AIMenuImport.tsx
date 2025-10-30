@@ -63,25 +63,11 @@ export default function AIMenuImport() {
   const [progress, setProgress] = useState(0);
   const [isApiKeySet, setIsApiKeySet] = useState(false);
 
-  // Check if API key exists in localStorage
+  // AI provider is now configured server-side
   useEffect(() => {
-    const savedProvider = localStorage.getItem('ai_provider') as AIProvider;
-    const savedKey = localStorage.getItem(`${savedProvider || 'huggingface'}_api_key`);
-    
-    if (savedProvider) {
-      setAiProvider(savedProvider);
-    }
-    
-    if (savedKey) {
-      setApiKey(savedKey);
-      if (savedProvider === 'openai') {
-        initializeOpenAI(savedKey);
-      } else {
-        initializeHuggingFace(savedKey);
-      }
-      setProvider(savedProvider || 'huggingface');
-      setIsApiKeySet(true);
-    }
+    // Default to huggingface (free OCR)
+    setAiProvider('huggingface');
+    setIsApiKeySet(true);
   }, []);
 
   // Fetch user's restaurants
@@ -166,55 +152,19 @@ export default function AIMenuImport() {
   };
 
   const handleApiKeySubmit = () => {
-    if (aiProvider === 'openai' && !apiKey.trim()) {
-      toast.error('Please enter your OpenAI API key');
-      return;
-    }
-
-    try {
-      if (aiProvider === 'openai') {
-        initializeOpenAI(apiKey);
-        localStorage.setItem(`${aiProvider}_api_key`, apiKey);
-      } else {
-        // Hugging Face uses free OCR.space, no API key needed
-        initializeHuggingFace('free'); // Placeholder
-      }
-      setProvider(aiProvider);
-      localStorage.setItem('ai_provider', aiProvider);
-      setIsApiKeySet(true);
-      toast.success(aiProvider === 'openai' ? 'API key saved successfully' : 'Free OCR activated!');
-    } catch (error: any) {
-      toast.error('Configuration failed');
-    }
+    // No longer needed - provider is server-side
+    setIsApiKeySet(true);
+    toast.success('AI extraction is ready!');
   };
 
   const handleProviderChange = (provider: AIProvider) => {
     setAiProvider(provider);
-    setIsApiKeySet(false);
-    const savedKey = localStorage.getItem(`${provider}_api_key`);
-    if (savedKey) {
-      setApiKey(savedKey);
-    } else {
-      setApiKey('');
-    }
   };
 
   const handleContinueToUpload = () => {
     if (!selectedRestaurant) {
       toast.error('Please select a restaurant');
       return;
-    }
-
-    if (aiProvider === 'openai' && !isApiKeySet) {
-      toast.error('Please configure your OpenAI API key');
-      return;
-    }
-
-    // Auto-activate free OCR for Hugging Face
-    if (aiProvider === 'huggingface' && !isApiKeySet) {
-      initializeHuggingFace('free');
-      setProvider('huggingface');
-      setIsApiKeySet(true);
     }
 
     setCurrentStep('upload');
@@ -239,27 +189,23 @@ export default function AIMenuImport() {
     setProgress(0);
 
     try {
-      let data: ExtractedMenuData;
+      setProgress(20);
+      toast.info('Converting image...');
+      const base64 = await fileToBase64(selectedFile);
       
-      // Check if file is PDF or image
-      if (selectedFile.type === 'application/pdf') {
-        // Handle PDF
-        setProgress(20);
-        toast.info('Processing PDF...');
-        
-        setProgress(50);
-        toast.info('Extracting text from PDF...');
-        data = await extractMenuFromPDF(selectedFile);
-      } else {
-        // Handle images
-        setProgress(20);
-        toast.info('Converting image...');
-        const base64 = await fileToBase64(selectedFile);
-        
-        setProgress(50);
-        toast.info('Extracting menu data with AI...');
-        data = await extractMenuFromImage(base64, selectedFile.type);
-      }
+      setProgress(50);
+      toast.info('Extracting menu data with AI...');
+      
+      // Call secure Edge Function
+      const { data, error } = await supabase.functions.invoke('ai-menu-extract', {
+        body: { 
+          image: base64, 
+          fileType: selectedFile.type,
+          provider: aiProvider 
+        }
+      });
+
+      if (error) throw error;
       
       // Validate extracted data
       setProgress(80);
@@ -273,7 +219,7 @@ export default function AIMenuImport() {
       setProgress(100);
       setExtractedData(data);
       setCurrentStep('preview');
-      toast.success(`Successfully extracted ${data.categories.reduce((sum, cat) => sum + cat.items.length, 0)} items!`);
+      toast.success(`Successfully extracted ${data.categories.reduce((sum: number, cat: any) => sum + cat.items.length, 0)} items!`);
       
     } catch (error: any) {
       console.error('Error processing file:', error);

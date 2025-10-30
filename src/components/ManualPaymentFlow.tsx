@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { manualPaymentService } from '@/services/manualPaymentService';
 import { supabase } from '@/integrations/supabase/client';
+import { validateAndSanitizeInput } from '@/lib/validation';
 import { 
   CreditCard, 
   Upload, 
@@ -90,20 +91,56 @@ export const ManualPaymentFlow = ({
   };
 
   const handleSubmitProof = async () => {
-    if (!referenceNumber.trim()) {
+    const sanitizedReference = validateAndSanitizeInput(referenceNumber, 50);
+    
+    if (!sanitizedReference || sanitizedReference.length < 3) {
       toast({
         title: 'Error',
-        description: 'Please enter a reference number',
+        description: 'Please enter a valid reference number (minimum 3 characters)',
         variant: 'destructive'
       });
       return;
+    }
+
+    // Validate reference format (alphanumeric, hyphens, underscores)
+    if (!/^[A-Z0-9\-_]+$/i.test(sanitizedReference)) {
+      toast({
+        title: 'Error',
+        description: 'Reference number can only contain letters, numbers, hyphens, and underscores',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate file if provided
+    if (proofFile) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!allowedTypes.includes(proofFile.type)) {
+        toast({
+          title: 'Error',
+          description: 'Please upload a valid image (JPG, PNG) or PDF file',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (proofFile.size > maxSize) {
+        toast({
+          title: 'Error',
+          description: 'File size must be less than 5MB',
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
       await manualPaymentService.submitPaymentProof(
         paymentRequestId,
-        referenceNumber,
+        sanitizedReference,
         proofFile ? URL.createObjectURL(proofFile) : undefined
       );
 

@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Store, Mail, Phone, MessageSquare, Lock } from "lucide-react";
+import { validateAndSanitizeInput, validateEmail, validateWhatsappNumber } from '@/lib/validation';
 
 const RestaurantSignup = () => {
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,39 @@ const RestaurantSignup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate and sanitize all inputs
+    const sanitizedName = validateAndSanitizeInput(formData.name, 100);
+    const sanitizedEmail = formData.email.trim().toLowerCase();
+    const sanitizedPhone = validateAndSanitizeInput(formData.phone, 20);
+    const sanitizedWhatsapp = validateAndSanitizeInput(formData.whatsapp_number, 20);
+
+    if (!sanitizedName || sanitizedName.length < 2) {
+      toast({
+        title: "Error",
+        description: "Restaurant name must be at least 2 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!validateEmail(sanitizedEmail)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!validateWhatsappNumber(sanitizedWhatsapp)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid WhatsApp number with country code (e.g., +250788123456)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!formData.selectedPackage) {
       toast({
         title: "Error",
@@ -82,9 +116,9 @@ const RestaurantSignup = () => {
     setLoading(true);
 
     try {
-      // Create the auth user first
+      // Create the auth user first with sanitized data
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
+        email: sanitizedEmail,
         password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`
@@ -102,17 +136,19 @@ const RestaurantSignup = () => {
           .single();
 
         if (!existingRestaurant) {
-          // Insert restaurant data with the auth user ID
+          // Insert restaurant data with sanitized values
+          const slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50);
+          
           const { error: restaurantError } = await supabase
             .from("restaurants")
             .insert({
               user_id: authData.user.id,
-              name: formData.name,
-              email: formData.email,
-              phone: formData.phone,
-              whatsapp_number: formData.whatsapp_number,
+              name: sanitizedName,
+              email: sanitizedEmail,
+              phone: sanitizedPhone || null,
+              whatsapp_number: sanitizedWhatsapp,
               subscription_status: "inactive",
-              slug: formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+              slug: slug
             });
 
           if (restaurantError) throw restaurantError;

@@ -51,13 +51,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         } else if (!requireAuth && user) {
           // Redirect authenticated users away from auth pages
           navigate('/dashboard/overview');
-        } else if (adminOnly && user) {
-          // For admin routes, check if user has admin role
-          const adminUser = localStorage.getItem("admin_user");
-          if (!adminUser) {
-            const returnUrl = location.pathname + location.search;
-            navigate(`/admin/login?returnUrl=${encodeURIComponent(returnUrl)}`);
-          }
         }
         
         setAuthChecked(true);

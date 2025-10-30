@@ -13,6 +13,7 @@ import { Mail, Lock, MessageCircle, User } from "lucide-react";
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
+import { validateAndSanitizeInput, validateEmail, validateWhatsappNumber } from '@/lib/validation';
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,7 @@ const Auth = () => {
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
 
+    // Validate and sanitize inputs
     if (!email || !password || !name || !whatsappNumber) {
       toast({
         title: "Error",
@@ -46,6 +48,38 @@ const Auth = () => {
       return;
     }
 
+    if (!validateEmail(email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!validateWhatsappNumber(whatsappNumber)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid WhatsApp number with country code",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const sanitizedName = validateAndSanitizeInput(name, 100);
+
     const redirectUrl = `${window.location.origin}/dashboard`;
     
     try {
@@ -55,7 +89,7 @@ const Auth = () => {
         options: {
           emailRedirectTo: redirectUrl,
           data: {
-            name,
+            name: sanitizedName,
             whatsapp: whatsappNumber,
           }
         }

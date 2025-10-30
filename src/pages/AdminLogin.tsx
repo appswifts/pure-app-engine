@@ -11,7 +11,7 @@ import { Loader2, Shield, Mail, Lock, ArrowLeft } from "lucide-react";
 const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: ""
   });
   const navigate = useNavigate();
@@ -25,39 +25,42 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      // Check for admin credentials
-      if (formData.username === "admin" && formData.password === "admin123") {
-        // Check if current user has admin access
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          throw new Error("You need to be logged in to access admin panel. Please log in to your account first.");
-        }
+      // Authenticate with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
+      });
 
-        // Check if this user has admin role
-        const { data: userRole, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .in("role", ["admin", "super_admin"])
-          .limit(1)
-          .single();
-
-        if (roleError || !userRole) {
-          throw new Error("Access denied. You don't have admin privileges.");
-        }
-
-        toast({
-          title: "Welcome Admin!",
-          description: "Successfully verified admin access."
-        });
-        
-        // Redirect to return URL or admin dashboard
-        const redirectTo = returnUrl && returnUrl !== '/admin/login' ? returnUrl : '/admin';
-        navigate(redirectTo);
-      } else {
-        throw new Error("Invalid admin credentials");
+      if (authError) throw authError;
+      
+      if (!authData.user) {
+        throw new Error("Authentication failed");
       }
+
+      // Verify admin access using secure server-side function
+      const { data: isAdmin, error: roleError } = await supabase.rpc('verify_admin_access', {
+        p_user_id: authData.user.id
+      });
+
+      if (roleError) {
+        console.error('Admin verification error:', roleError);
+        throw new Error("Failed to verify admin access");
+      }
+
+      if (!isAdmin) {
+        // Sign out the user since they don't have admin access
+        await supabase.auth.signOut();
+        throw new Error("Access denied. You don't have admin privileges.");
+      }
+
+      toast({
+        title: "Welcome Admin!",
+        description: "Successfully verified admin access."
+      });
+      
+      // Redirect to return URL or admin dashboard
+      const redirectTo = returnUrl && returnUrl !== '/admin/login' ? returnUrl : '/admin';
+      navigate(redirectTo);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -100,16 +103,17 @@ const AdminLogin = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username" className="flex items-center gap-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  Username
+                  Admin Email
                 </Label>
                 <Input
-                  id="username"
-                  name="username"
-                  value={formData.username}
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  placeholder="admin"
+                  placeholder="admin@example.com"
                   required
                 />
               </div>
@@ -140,12 +144,6 @@ const AdminLogin = () => {
                   "Sign In to Admin Panel"
                 )}
               </Button>
-
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">
-                  Demo credentials: username: <code>admin</code>, password: <code>admin123</code>
-                </p>
-              </div>
             </form>
           </CardContent>
         </Card>
