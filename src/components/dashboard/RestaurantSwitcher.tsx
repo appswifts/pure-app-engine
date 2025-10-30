@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { validateAndSanitizeInput, validateEmail, validateWhatsappNumber } from '@/lib/validation';
 
 interface Restaurant {
   id: string;
@@ -95,10 +96,45 @@ export default function RestaurantSwitcher({
   const handleCreateRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone) {
+    // Validate and sanitize inputs
+    const sanitizedName = validateAndSanitizeInput(formData.name, 100);
+    const sanitizedEmail = formData.email.trim().toLowerCase();
+    const sanitizedPhone = validateAndSanitizeInput(formData.phone, 20);
+    const sanitizedWhatsapp = formData.whatsapp_number 
+      ? validateAndSanitizeInput(formData.whatsapp_number, 20) 
+      : sanitizedPhone;
+    
+    if (!sanitizedName || sanitizedName.length < 2) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Restaurant name must be at least 2 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateEmail(sanitizedEmail)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!sanitizedPhone) {
+      toast({
+        title: "Error",
+        description: "Please enter a phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateWhatsappNumber(sanitizedWhatsapp)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid WhatsApp number with country code (e.g., +250788123456)",
         variant: "destructive",
       });
       return;
@@ -106,38 +142,49 @@ export default function RestaurantSwitcher({
 
     setCreating(true);
     try {
-      // Generate a unique slug
-      const baseSlug = formData.name
+      // Generate a unique slug (limit to 50 chars)
+      const baseSlug = sanitizedName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+        .replace(/^-|-$/g, "")
+        .substring(0, 50);
       
       let slug = baseSlug;
       let counter = 1;
       
-      // Check if slug exists and make it unique
+      // Check if slug exists and make it unique - use maybeSingle() to avoid 406 error
       while (true) {
-        const { data: existingRestaurant } = await supabase
+        const { data: existingRestaurant, error: checkError } = await supabase
           .from("restaurants")
           .select("id")
           .eq("slug", slug)
-          .single();
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle no results
+        
+        if (checkError) {
+          console.error('Slug check error:', checkError);
+          throw new Error('Failed to check slug availability');
+        }
         
         if (!existingRestaurant) break;
         
         slug = `${baseSlug}-${counter}`;
         counter++;
+        
+        // Safety limit to prevent infinite loops
+        if (counter > 100) {
+          throw new Error('Unable to generate unique slug');
+        }
       }
 
-      // Create the restaurant
+      // Create the restaurant with sanitized data
       const { data: newRestaurant, error } = await supabase
         .from("restaurants")
         .insert({
           user_id: userId,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          whatsapp_number: formData.whatsapp_number || formData.phone,
+          name: sanitizedName,
+          email: sanitizedEmail,
+          phone: sanitizedPhone,
+          whatsapp_number: sanitizedWhatsapp,
           slug: slug,
           subscription_status: "trial",
           trial_end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days trial
@@ -145,11 +192,14 @@ export default function RestaurantSwitcher({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
 
       toast({
         title: "Success",
-        description: `Restaurant "${formData.name}" created successfully!`,
+        description: `Restaurant "${sanitizedName}" created successfully!`,
       });
 
       // Reset form
@@ -169,9 +219,21 @@ export default function RestaurantSwitcher({
       }
     } catch (error: any) {
       console.error("Error creating restaurant:", error);
+      
+      let errorMessage = "Failed to create restaurant";
+      
+      // Provide more specific error messages
+      if (error.message?.includes('duplicate key') || error.code === '23505') {
+        errorMessage = "A restaurant with this information already exists";
+      } else if (error.message?.includes('unique constraint')) {
+        errorMessage = "This restaurant name or email is already in use";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to create restaurant",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
