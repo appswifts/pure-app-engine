@@ -1,24 +1,67 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Blank App - Start Building</title>
-    <meta name="description" content="A clean, modern blank app ready for your next project" />
-    <meta name="author" content="Lovable" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>MenuForest - QR Menu System</title>
+    <meta name="description" content="Digital QR menu system for restaurants. Create, manage, and share your restaurant menu with QR codes." />
+    <meta name="author" content="MenuForest" />
+    <meta name="keywords" content="QR menu, restaurant, digital menu, contactless ordering" />
+    <meta name="theme-color" content="#F97316" />
 
-    <meta property="og:title" content="Blank App - Start Building" />
-    <meta property="og:description" content="A clean, modern blank app ready for your next project" />
+    <!-- PWA Manifest removed to prevent caching issues -->
+    <!-- <link rel="manifest" href="/manifest.json" /> -->
+    
+    <!-- Apple PWA Support -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MenuForest" />
+    <link rel="apple-touch-icon" href="/menuforestlogo.png" />
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:url" content="https://menuforest.com/" />
+    <meta property="og:title" content="MenuForest - QR Menu System" />
+    <meta property="og:description" content="Digital QR menu system for restaurants. Create, manage, and share your restaurant menu with QR codes." />
+    <meta property="og:image" content="/menuforestlogo1.png" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://menuforest.com/" />
+    <meta property="twitter:title" content="MenuForest - QR Menu System" />
+    <meta property="twitter:description" content="Digital QR menu system for restaurants. Create, manage, and share your restaurant menu with QR codes." />
+    <meta property="twitter:image" content="/menuforestlogo1.png" />
+
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://supabase.co" />
+    
+    <!-- DNS prefetch for better performance -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    
+    <!-- No external fonts - using system fonts for performance -->
+    
+    <!-- Icons -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/menuforestlogo.png" />
+
+    
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Performance hints -->
+    <meta http-equiv="Accept-CH" content="DPR, Viewport-Width, Width" />
   </head>
 
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx" crossorigin="anonymous"></script>
+    
+    <!-- Service Worker disabled to prevent caching issues -->
   </body>
 </html>

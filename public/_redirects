@@ -1,0 +1,8 @@
+# Netlify redirects for SPA
+/*    /index.html   200
+
+# Force HTTPS
+http://menuforest.netlify.app/*  https://menuforest.netlify.app/:splat  301!
+
+# API redirects (if needed)
+/api/*  /.netlify/functions/:splat  200

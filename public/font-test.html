@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vogun Font Test</title>
+    <style>
+        @font-face {
+            font-family: 'Vogun';
+            font-style: normal;
+            font-weight: 500;
+            font-display: swap;
+            src: url('/fonts/vogun-minimal-modern-font-2025-01-24-22-42-44-utc/Web-TT/Vogun-Medium.woff2') format('woff2'),
+                 url('/fonts/vogun-minimal-modern-font-2025-01-24-22-42-44-utc/Web-TT/Vogun-Medium.woff') format('woff'),
+                 url('/fonts/vogun-minimal-modern-font-2025-01-24-22-42-44-utc/Web-TT/Vogun-Medium.ttf') format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Vogun';
+            font-style: italic;
+            font-weight: 500;
+            font-display: swap;
+            src: url('/fonts/vogun-minimal-modern-font-2025-01-24-22-42-44-utc/Web-TT/Vogun-MediumItalic.woff2') format('woff2'),
+                 url('/fonts/vogun-minimal-modern-font-2025-01-24-22-42-44-utc/Web-TT/Vogun-MediumItalic.woff') format('woff'),
+                 url('/fonts/vogun-minimal-modern-font-2025-01-24-22-42-44-utc/Web-TT/Vogun-MediumItalic.ttf') format('truetype');
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #ff6b35;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        .font-test {
+            margin: 30px 0;
+            padding: 20px;
+            background: #fafafa;
+            border-left: 4px solid #ff6b35;
+        }
+
+        .vogun {
+            font-family: 'Vogun', sans-serif;
+        }
+
+        .vogun-italic {
+            font-family: 'Vogun', sans-serif;
+            font-style: italic;
+        }
+
+        .sample-text {
+            font-size: 24px;
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .menu-sample {
+            margin-top: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .menu-title {
+            font-family: 'Vogun', sans-serif;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .menu-item {
+            font-family: 'Vogun', sans-serif;
+            font-size: 20px;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vogun Font Test Page</h1>
+        
+        <div class="font-test">
+            <h2>Default Browser Font (Arial)</h2>
+            <p class="sample-text">The quick brown fox jumps over the lazy dog</p>
+            <p class="sample-text">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+            <p class="sample-text">abcdefghijklmnopqrstuvwxyz</p>
+            <p class="sample-text">1234567890 !@#$%^&*()</p>
+        </div>
+
+        <div class="font-test">
+            <h2>Vogun Font (Normal)</h2>
+            <p class="sample-text vogun">The quick brown fox jumps over the lazy dog</p>
+            <p class="sample-text vogun">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+            <p class="sample-text vogun">abcdefghijklmnopqrstuvwxyz</p>
+            <p class="sample-text vogun">1234567890 !@#$%^&*()</p>
+        </div>
+
+        <div class="font-test">
+            <h2>Vogun Font (Italic)</h2>
+            <p class="sample-text vogun-italic">The quick brown fox jumps over the lazy dog</p>
+            <p class="sample-text vogun-italic">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+            <p class="sample-text vogun-italic">abcdefghijklmnopqrstuvwxyz</p>
+            <p class="sample-text vogun-italic">1234567890 !@#$%^&*()</p>
+        </div>
+
+        <div class="menu-sample">
+            <h2 class="menu-title">Restaurant Menu Sample</h2>
+            <div class="menu-item">🍔 Classic Burger - $12.99</div>
+            <div class="menu-item">🍕 Margherita Pizza - $14.99</div>
+            <div class="menu-item">🥗 Caesar Salad - $9.99</div>
+            <div class="menu-item">🍝 Spaghetti Carbonara - $16.99</div>
+            <div class="menu-item">🍰 Chocolate Cake - $7.99</div>
+        </div>
+
+        <div id="font-status" class="status"></div>
+    </div>
+
+    <script>
+        // Check if fonts are loaded
+        document.fonts.ready.then(() => {
+            const statusDiv = document.getElementById('font-status');
+            
+            // Check if Vogun font is available
+            if (document.fonts.check('1em Vogun')) {
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '✅ Vogun font loaded successfully!';
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Vogun font failed to load. Check the font paths.';
+            }
+            
+            // List all loaded fonts
+            console.log('Loaded fonts:');
+            document.fonts.forEach(font => {
+                console.log(`${font.family}: ${font.status}`);
+            });
+        });
+    </script>
+</body>
+</html>
