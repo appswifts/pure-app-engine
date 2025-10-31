@@ -96,8 +96,15 @@ const Dashboard = () => {
         
         if (userRestaurants && userRestaurants.length > 0) {
           setRestaurants(userRestaurants);
-          // Set the first restaurant as the current one
-          setRestaurant(userRestaurants[0]);
+          
+          // Check if there's a stored restaurant ID in localStorage
+          const storedRestaurantId = localStorage.getItem('selectedRestaurantId');
+          const selectedRestaurant = storedRestaurantId 
+            ? userRestaurants.find(r => r.id === storedRestaurantId)
+            : null;
+          
+          // Use stored restaurant if found, otherwise use the first one
+          setRestaurant(selectedRestaurant || userRestaurants[0]);
         } else {
           // If no restaurant exists, try to create one
           // RestaurantLoader will check for existence first to prevent duplicates
@@ -247,6 +254,8 @@ const Dashboard = () => {
                 <RestaurantSwitcher
                   currentRestaurant={restaurant}
                   onRestaurantChange={(newRestaurant) => {
+                    // Store the selected restaurant ID in localStorage
+                    localStorage.setItem('selectedRestaurantId', newRestaurant.id);
                     setRestaurant(newRestaurant);
                     // Reload the page to refresh all data for the new restaurant
                     window.location.reload();
