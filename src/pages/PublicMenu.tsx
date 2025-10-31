@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, MessageCircle, Plus, Minus, X, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MenuCard } from "@/components/menu/MenuCard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RestrictedMenuView from "@/components/RestrictedMenuView";
 import { simplePaymentAccessControl } from "@/services/simplePaymentAccessControl";
 
@@ -46,6 +47,15 @@ interface Restaurant {
   whatsapp_button_style?: string;
   whatsapp_button_price_bg?: string;
   whatsapp_button_price_color?: string;
+}
+
+interface MenuGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+  restaurant_id: string;
 }
 
 interface Category {
@@ -120,6 +130,8 @@ const LoadingSpinner = () => (
 const PublicMenu = () => {
   const { restaurantSlug, tableSlug } = useParams();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [menuGroups, setMenuGroups] = useState<MenuGroup[]>([]);
+  const [selectedMenuGroup, setSelectedMenuGroup] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [variations, setVariations] = useState<ItemVariation[]>([]);
@@ -140,6 +152,46 @@ const PublicMenu = () => {
       loadMenuData();
     }
   }, [restaurantSlug]);
+
+  useEffect(() => {
+    if (restaurant && selectedMenuGroup) {
+      loadCategoriesAndItems();
+    }
+  }, [selectedMenuGroup]);
+
+  const loadCategoriesAndItems = async () => {
+    if (!restaurant) return;
+
+    try {
+      // Load categories for selected menu group
+      let categoriesQuery = supabase
+        .from("categories")
+        .select("*")
+        .eq("restaurant_id", restaurant.id);
+
+      if (selectedMenuGroup) {
+        categoriesQuery = categoriesQuery.eq("menu_group_id", selectedMenuGroup);
+      }
+
+      const { data: categoriesData, error: categoriesError } = await categoriesQuery.order("display_order");
+
+      if (categoriesError) throw categoriesError;
+      setCategories(categoriesData || []);
+
+      // Load menu items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("menu_items")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .eq("is_available", true)
+        .order("display_order");
+
+      if (itemsError) throw itemsError;
+      setMenuItems(itemsData || []);
+    } catch (error: any) {
+      console.error("Error loading menu data:", error);
+    }
+  };
 
   const loadMenuData = async () => {
     try {
@@ -162,6 +214,22 @@ const PublicMenu = () => {
       
       const restaurantData = accessResult.restaurant;
 
+      // Load menu groups
+      const { data: menuGroupsData, error: menuGroupsError } = await supabase
+        .from("menu_groups")
+        .select("*")
+        .eq("restaurant_id", restaurantData.id)
+        .eq("is_active", true)
+        .order("display_order");
+
+      if (menuGroupsError) throw menuGroupsError;
+      setMenuGroups(menuGroupsData || []);
+      
+      // Auto-select first menu group if exists
+      if (menuGroupsData && menuGroupsData.length > 0) {
+        setSelectedMenuGroup(menuGroupsData[0].id);
+      }
+
       // Load table name if tableSlug exists
       if (tableSlug) {
         const { data: tableData, error: tableError } = await supabase
@@ -177,11 +245,17 @@ const PublicMenu = () => {
       }
 
       // Load categories
-      const { data: categoriesData, error: categoriesError } = await supabase
+      let categoriesQuery = supabase
         .from("categories")
         .select("*")
-        .eq("restaurant_id", restaurantData.id)
-        .order("display_order");
+        .eq("restaurant_id", restaurantData.id);
+
+      // Filter by selected menu group if available
+      if (selectedMenuGroup) {
+        categoriesQuery = categoriesQuery.eq("menu_group_id", selectedMenuGroup);
+      }
+
+      const { data: categoriesData, error: categoriesError } = await categoriesQuery.order("display_order");
 
       if (categoriesError) throw categoriesError;
       setCategories(categoriesData || []);
@@ -386,8 +460,13 @@ const PublicMenu = () => {
     return <RestrictedMenuView restaurant={restaurant} accessInfo={accessInfo} />;
   }
 
-  // Filter items by category and search query
+  // Filter items by menu group, category, and search query
   const filteredItems = menuItems.filter(item => {
+    // Filter by menu group - only show items whose categories belong to selected menu group
+    const itemCategory = categories.find(c => c.id === item.category_id);
+    const menuGroupMatch = !selectedMenuGroup || 
+      (itemCategory && (itemCategory as any).menu_group_id === selectedMenuGroup);
+    
     // Filter by category
     const categoryMatch = selectedCategory === null || item.category_id === selectedCategory;
     
@@ -396,7 +475,7 @@ const PublicMenu = () => {
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    return categoryMatch && searchMatch;
+    return menuGroupMatch && categoryMatch && searchMatch;
   });
 
 
@@ -544,6 +623,44 @@ const PublicMenu = () => {
             {restaurant.name}
           </h1>
         </div>
+
+        {/* Menu Group Tabs (Cuisines) */}
+        {menuGroups.length > 1 && (
+          <div className="px-4 mb-6">
+            <div className="max-w-md mx-auto">
+              <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
+                {menuGroups.map((group) => {
+                  const isActive = selectedMenuGroup === group.id;
+                  const activeStyle = getButtonStyle(true);
+                  const inactiveStyle = getButtonStyle(false);
+                  const style = isActive ? activeStyle : inactiveStyle;
+                  
+                  return (
+                    <button
+                      key={group.id}
+                      onClick={() => {
+                        setSelectedMenuGroup(group.id);
+                        setSelectedCategory(null); // Reset category when switching menu group
+                      }}
+                      className={`${style.className} flex-shrink-0 relative`}
+                      style={style.style}
+                    >
+                      {group.name}
+                      {group.description && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedMenuGroup && menuGroups.find(g => g.id === selectedMenuGroup)?.description && (
+                <p className="text-center text-sm mt-2 text-white/80">
+                  {menuGroups.find(g => g.id === selectedMenuGroup)?.description}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Category Navigation with Search */}
         <div className="px-4 mb-8">

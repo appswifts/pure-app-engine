@@ -15,7 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Edit2, Trash2, UtensilsCrossed, Eye, EyeOff, AlertCircle, ChefHat, Layers, Coffee, Settings } from "lucide-react";
+import { Plus, Edit2, Trash2, UtensilsCrossed, Eye, EyeOff, AlertCircle, ChefHat, Layers, Coffee, Settings, Globe } from "lucide-react";
+import MenuGroupManager from "@/components/dashboard/MenuGroupManager";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
@@ -35,6 +36,7 @@ const MenuManagement = () => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [accompaniments, setAccompaniments] = useState<Accompaniment[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedMenuGroupId, setSelectedMenuGroupId] = useState<string | null>(null);
   const [showItemDialog, setShowItemDialog] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showAccompanimentDialog, setShowAccompanimentDialog] = useState(false);
@@ -104,11 +106,17 @@ const MenuManagement = () => {
 
       console.log("Fetching categories for user:", user.id);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("categories")
         .select("*")
-        .eq("restaurant_id", user.id)
-        .order("display_order");
+        .eq("restaurant_id", user.id);
+
+      // Filter by menu group if selected
+      if (selectedMenuGroupId) {
+        query = query.eq("menu_group_id", selectedMenuGroupId);
+      }
+
+      const { data, error } = await query.order("display_order");
 
       if (error) {
         console.error("Category fetch error:", error);
@@ -195,6 +203,12 @@ const MenuManagement = () => {
       fetchItems();
     }
   }, [selectedCategory, user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchCategories();
+    }
+  }, [selectedMenuGroupId, user]);
 
   const handleItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,9 +393,19 @@ const MenuManagement = () => {
     try {
       if (!user) throw new Error("User not authenticated");
 
+      if (!selectedMenuGroupId && !editingCategory) {
+        toast({
+          title: "Please select a menu group first",
+          description: "You need to select a cuisine/menu group before adding categories",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const categoryData = {
         ...categoryForm,
         restaurant_id: user.id,
+        menu_group_id: editingCategory?.menu_group_id || selectedMenuGroupId,
         display_order: editingCategory?.display_order || categories.length
       };
 
@@ -544,7 +568,29 @@ const MenuManagement = () => {
               </div>
             ) : (
               <>
+                {/* Menu Groups Management */}
+                {user && (
+                  <MenuGroupManager
+                    restaurantId={user.id}
+                    selectedMenuGroupId={selectedMenuGroupId}
+                    onMenuGroupSelect={setSelectedMenuGroupId}
+                  />
+                )}
+
+                <Separator className="my-8" />
+
                 {/* Categories Management */}
+                {!selectedMenuGroupId ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Globe className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">Select a Menu Group</h3>
+                      <p className="text-muted-foreground">
+                        Please select a cuisine/menu group above to manage its categories and items
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -651,11 +697,13 @@ const MenuManagement = () => {
                           No categories found. Add your first category to organize your menu.
                         </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
+                     </div>
+                   </CardContent>
+                 </Card>
+                )}
 
                 {/* Accompaniments Management - Simplified */}
+                {selectedMenuGroupId && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -749,11 +797,13 @@ const MenuManagement = () => {
                           No accompaniments found. Add your first accompaniment to offer extras with your menu items.
                         </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
+                   </div>
+                 </CardContent>
+               </Card>
+               )}
 
                 {/* Menu Items */}
+                {selectedMenuGroupId && (
                 <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
@@ -958,8 +1008,9 @@ const MenuManagement = () => {
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                 </CardContent>
+               </Card>
+               )}
               </>
             )}
           </div>

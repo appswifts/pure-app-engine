@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Optimized query builder with proper indexing hints
 export class OptimizedQueries {
   // Single query to fetch all menu data with joins - using regular queries instead of RPC
-  static async getCompleteMenuData(restaurantId: string) {
+  static async getCompleteMenuData(restaurantId: string, menuGroupId?: string) {
     // Fetch restaurant data
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
@@ -13,8 +13,18 @@ export class OptimizedQueries {
     
     if (restaurantError) throw restaurantError;
 
-    // Fetch categories with items
-    const { data: categories, error: categoriesError } = await supabase
+    // Fetch menu groups
+    const { data: menuGroups, error: menuGroupsError } = await supabase
+      .from('menu_groups')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .order('display_order');
+    
+    if (menuGroupsError) throw menuGroupsError;
+
+    // Fetch categories with items - optionally filter by menu group
+    let categoriesQuery = supabase
       .from('categories')
       .select(`
         *,
@@ -25,12 +35,17 @@ export class OptimizedQueries {
         )
       `)
       .eq('restaurant_id', restaurantId)
-      .eq('menu_items.is_available', true)
-      .order('display_order');
+      .eq('menu_items.is_available', true);
+
+    if (menuGroupId) {
+      categoriesQuery = categoriesQuery.eq('menu_group_id', menuGroupId);
+    }
+
+    const { data: categories, error: categoriesError } = await categoriesQuery.order('display_order');
     
     if (categoriesError) throw categoriesError;
     
-    return { restaurant, categories };
+    return { restaurant, menuGroups, categories };
   }
 
   // Batch fetch with proper pagination
@@ -77,16 +92,38 @@ export class OptimizedQueries {
     };
   }
 
-  // Cached category fetch with count
-  static async getCategoriesWithItemCount(restaurantId: string) {
-    const { data, error } = await supabase
+  // Cached category fetch with count - optionally filter by menu group
+  static async getCategoriesWithItemCount(restaurantId: string, menuGroupId?: string) {
+    let query = supabase
       .from('categories')
       .select(`
         *,
         menu_items!inner(count)
       `)
-      .eq('restaurant_id', restaurantId)
-      .order('display_order');
+      .eq('restaurant_id', restaurantId);
+
+    if (menuGroupId) {
+      query = query.eq('menu_group_id', menuGroupId);
+    }
+
+    const { data, error } = await query.order('display_order');
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Fetch menu groups for a restaurant
+  static async getMenuGroups(restaurantId: string, activeOnly = true) {
+    let query = supabase
+      .from('menu_groups')
+      .select('*')
+      .eq('restaurant_id', restaurantId);
+
+    if (activeOnly) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data, error } = await query.order('display_order');
 
     if (error) throw error;
     return data;

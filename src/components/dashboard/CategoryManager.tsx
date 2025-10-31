@@ -21,9 +21,10 @@ interface Category {
 
 interface CategoryManagerProps {
   user: User;
+  menuGroupId?: string | null;
 }
 
-const CategoryManager = ({ user }: CategoryManagerProps) => {
+const CategoryManager = ({ user, menuGroupId }: CategoryManagerProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -36,16 +37,22 @@ const CategoryManager = ({ user }: CategoryManagerProps) => {
     if (user?.id) {
       loadCategories();
     }
-  }, [user?.id]);
+  }, [user?.id, menuGroupId]);
 
   const loadCategories = async () => {
     if (!restaurantId) return;
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("categories")
         .select("*")
-        .eq("restaurant_id", restaurantId)
-        .order("display_order");
+        .eq("restaurant_id", restaurantId);
+
+      // Filter by menu group if provided
+      if (menuGroupId) {
+        query = query.eq("menu_group_id", menuGroupId);
+      }
+
+      const { data, error } = await query.order("display_order");
 
       if (error) throw error;
       setCategories(data || []);
@@ -81,11 +88,21 @@ const CategoryManager = ({ user }: CategoryManagerProps) => {
         });
       } else {
         // Create new category
+        if (!menuGroupId) {
+          toast({
+            title: 'Error',
+            description: 'Please select a menu group first',
+            variant: 'destructive',
+          });
+          return;
+        }
+
         const { error } = await supabase
           .from("categories")
           .insert({
             name: formData.name.trim(),
             restaurant_id: restaurantId,
+            menu_group_id: menuGroupId,
             display_order: categories.length,
           });
 
