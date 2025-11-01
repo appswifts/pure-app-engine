@@ -1,4 +1,7 @@
 project_id = "isduljdnrbspiqsgvkiv"
 
 [functions.ai-menu-extract]
-verify_jwt = true
+verify_jwt = false
+
+[functions.ai-menu-extract-advanced]
+verify_jwt = false

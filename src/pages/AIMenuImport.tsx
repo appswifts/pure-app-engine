@@ -66,10 +66,9 @@ export default function AIMenuImport() {
   const [progress, setProgress] = useState(0);
   const [isApiKeySet, setIsApiKeySet] = useState(false);
 
-  // AI provider is now configured server-side
+  // Set provider - using Lovable AI with automatic fallback
   useEffect(() => {
-    // Default to huggingface (free OCR)
-    setAiProvider('huggingface');
+    setProvider('huggingface');
     setIsApiKeySet(true);
   }, []);
 

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import * as pdfjsLib from 'pdfjs-dist';
+import { supabase } from '@/integrations/supabase/client';
 
 // Set up PDF.js worker using the installed version
 // This ensures the worker version matches the library version
@@ -183,36 +184,67 @@ const extractTextWithOCRSpace = async (
 };
 
 /**
- * Extract menu data from image using Hugging Face OCR
+ * Extract menu data using advanced AI vision models via edge function
  */
-const extractMenuFromImageHuggingFace = async (
+const extractMenuFromImageAdvanced = async (
+  base64Image: string,
+  mimeType: string,
+  existingCategories: { id: string; name: string }[] = []
+): Promise<ExtractedMenuData> => {
+  try {
+    console.log('Starting advanced AI menu extraction...');
+    
+    const { data, error } = await supabase.functions.invoke('ai-menu-extract-advanced', {
+      body: {
+        image: `data:${mimeType};base64,${base64Image}`,
+        fileType: mimeType,
+        model: 'google/gemini-2.5-flash', // Fast and accurate vision model
+        existingCategories: existingCategories,
+      }
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'AI extraction failed');
+    }
+
+    if (!data || !data.categories) {
+      throw new Error('Invalid response from AI extraction service');
+    }
+
+    console.log('AI extraction successful:', data);
+    return data as ExtractedMenuData;
+  } catch (error: any) {
+    console.error('Advanced AI extraction error:', error);
+    // Fallback to legacy OCR method
+    console.log('Falling back to legacy OCR method...');
+    return extractMenuFromImageLegacy(base64Image, mimeType);
+  }
+};
+
+/**
+ * Legacy OCR extraction (fallback method)
+ */
+const extractMenuFromImageLegacy = async (
   base64Image: string,
   mimeType: string
 ): Promise<ExtractedMenuData> => {
   try {
-    // Step 1: Extract text using free OCR service
-    console.log('Starting OCR extraction...');
+    console.log('Starting legacy OCR extraction...');
     const extractedText = await extractTextWithOCRSpace(base64Image, mimeType);
     console.log('Extracted Text:', extractedText);
 
-    // Step 2: Parse text into structured menu data
     let parsedData = parseTextToMenuStructure(extractedText);
-    console.log('Parsed Data (raw):', JSON.stringify(parsedData, null, 2));
-    
-    // Step 3: Post-process to improve quality
     parsedData = postProcessExtractedData(parsedData);
-    console.log('Parsed Data (cleaned):', JSON.stringify(parsedData, null, 2));
     
-    // Step 4: Validate and format the data
     const extractedData: ExtractedMenuData = {
       restaurant_name: undefined,
       categories: parsedData.categories || [],
       raw_text: extractedText,
     };
 
-    // Step 4: If no categories found, create a default one
     if (extractedData.categories.length === 0 || extractedData.categories[0].items.length === 0) {
-      console.warn('No menu items detected. Please review the extracted text.');
+      console.warn('No menu items detected with legacy OCR');
       extractedData.categories = [{
         name: 'Menu Items',
         description: 'Please review and edit these items',
@@ -225,11 +257,10 @@ const extractMenuFromImageHuggingFace = async (
       }];
     }
 
-    console.log('Final Extracted Data:', JSON.stringify(extractedData, null, 2));
     return extractedData;
   } catch (error: any) {
-    console.error('Menu extraction error:', error);
-    throw new Error(error.message || 'Failed to extract menu data from image');
+    console.error('Legacy extraction error:', error);
+    throw new Error(error.message || 'Failed to extract menu data');
   }
 };
 
@@ -611,17 +642,15 @@ Be thorough and extract ALL items visible in the image.`;
 };
 
 /**
- * Extract menu data from image using the configured provider
+ * Extract menu data from image using the best available method
  */
 export const extractMenuFromImage = async (
   base64Image: string,
-  mimeType: string
+  mimeType: string,
+  existingCategories: { id: string; name: string }[] = []
 ): Promise<ExtractedMenuData> => {
-  if (currentProvider === 'huggingface') {
-    return extractMenuFromImageHuggingFace(base64Image, mimeType);
-  } else {
-    return extractMenuFromImageOpenAI(base64Image, mimeType);
-  }
+  // Always try advanced AI first (uses Lovable AI)
+  return extractMenuFromImageAdvanced(base64Image, mimeType, existingCategories);
 };
 
 /**
@@ -729,52 +758,55 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
 };
 
 /**
- * Extract menu data from PDF
+ * Extract menu data from PDF using AI vision
  */
-export const extractMenuFromPDF = async (file: File): Promise<ExtractedMenuData> => {
+export const extractMenuFromPDF = async (
+  file: File,
+  existingCategories: { id: string; name: string }[] = []
+): Promise<ExtractedMenuData> => {
   try {
-    console.log('Starting PDF extraction...');
+    console.log('Starting PDF extraction with AI...');
     
-    // Step 1: Extract text from PDF
+    // Extract text from PDF
     const extractedText = await extractTextFromPDF(file);
-    console.log('Extracted PDF Text:', extractedText);
     
     if (!extractedText || extractedText.trim().length === 0) {
       throw new Error('No text found in PDF. The PDF might be image-based or empty.');
     }
     
-    // Step 2: Parse text into menu structure
-    let parsedData = parseTextToMenuStructure(extractedText);
-    console.log('Parsed Data (raw):', JSON.stringify(parsedData, null, 2));
-    
-    // Step 3: Post-process to improve quality
-    parsedData = postProcessExtractedData(parsedData);
-    console.log('Parsed Data (cleaned):', JSON.stringify(parsedData, null, 2));
-    
-    // Step 4: Validate and format the data
-    const extractedData: ExtractedMenuData = {
-      restaurant_name: undefined,
-      categories: parsedData.categories || [],
-      raw_text: extractedText,
-    };
-    
-    // Step 5: If no categories found, create a default one
-    if (extractedData.categories.length === 0 || extractedData.categories[0].items.length === 0) {
-      console.warn('No menu items detected in PDF. Please review the extracted text.');
-      extractedData.categories = [{
-        name: 'Menu Items',
-        description: 'Please review and edit these items',
-        items: [{
-          name: 'Review Required',
-          description: 'No items were automatically detected from the PDF',
-          price: 0,
-          category: 'Menu Items',
-        }],
-      }];
+    // Try AI-powered extraction first
+    try {
+      console.log('Using AI to parse PDF text...');
+      const base64 = await fileToBase64(file);
+      return await extractMenuFromImageAdvanced(base64, 'application/pdf', existingCategories);
+    } catch (aiError) {
+      console.warn('AI extraction failed, falling back to text parsing:', aiError);
+      
+      // Fallback to text parsing
+      let parsedData = parseTextToMenuStructure(extractedText);
+      parsedData = postProcessExtractedData(parsedData);
+      
+      const extractedData: ExtractedMenuData = {
+        restaurant_name: undefined,
+        categories: parsedData.categories || [],
+        raw_text: extractedText,
+      };
+      
+      if (extractedData.categories.length === 0 || extractedData.categories[0].items.length === 0) {
+        extractedData.categories = [{
+          name: 'Menu Items',
+          description: 'Please review and edit these items',
+          items: [{
+            name: 'Review Required',
+            description: 'No items were automatically detected from the PDF',
+            price: 0,
+            category: 'Menu Items',
+          }],
+        }];
+      }
+      
+      return extractedData;
     }
-    
-    console.log('Final Extracted PDF Data:', JSON.stringify(extractedData, null, 2));
-    return extractedData;
   } catch (error: any) {
     console.error('PDF extraction error:', error);
     throw new Error(error.message || 'Failed to extract menu data from PDF');
@@ -1179,13 +1211,13 @@ export const extractMenuFromFile = async (
       break;
     
     case 'pdf':
-      extracted = await extractMenuFromPDF(file);
+      extracted = await extractMenuFromPDF(file, existingCategories);
       break;
     
     case 'image':
     default:
       const base64 = await fileToBase64(file);
-      extracted = await extractMenuFromImage(base64, file.type);
+      extracted = await extractMenuFromImage(base64, file.type, existingCategories);
       break;
   }
 
