@@ -40,7 +40,7 @@ class StripeService {
   async saveConfig(config: Omit<StripeConfig, 'id' | 'created_at' | 'updated_at'>): Promise<StripeConfig> {
     try {
       // Check if config exists for this environment
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing, error: checkError } = await (supabase as any)
         .from('stripe_config')
         .select('id')
         .eq('environment', config.environment)
@@ -54,7 +54,7 @@ class StripeService {
       
       if (existing) {
         // UPDATE existing config
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('stripe_config')
           .update({
             publishable_key: config.publishable_key,
@@ -70,7 +70,7 @@ class StripeService {
         result = data;
       } else {
         // CREATE new config
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('stripe_config')
           .insert({
             environment: config.environment,
@@ -88,7 +88,7 @@ class StripeService {
 
       // If setting this as active, deactivate other configs
       if (config.is_active) {
-        await supabase
+        await (supabase as any)
           .from('stripe_config')
           .update({ is_active: false })
           .neq('id', result.id);
@@ -106,7 +106,7 @@ class StripeService {
    */
   async getActiveConfig(): Promise<StripeConfig | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('stripe_config')
         .select('*')
         .eq('is_active', true)
@@ -120,7 +120,7 @@ class StripeService {
         throw error;
       }
 
-      return data;
+      return data as StripeConfig;
     } catch (error) {
       console.error('Error fetching active Stripe config:', error);
       throw error;
@@ -132,7 +132,7 @@ class StripeService {
    */
   async getConfigByEnvironment(environment: 'test' | 'live'): Promise<StripeConfig | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('stripe_config')
         .select('*')
         .eq('environment', environment)
@@ -145,7 +145,7 @@ class StripeService {
         throw error;
       }
 
-      return data;
+      return data as StripeConfig;
     } catch (error) {
       console.error('Error fetching Stripe config:', error);
       throw error;
@@ -157,14 +157,14 @@ class StripeService {
    */
   async getAllConfigs(): Promise<StripeConfig[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('stripe_config')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      return data || [];
+      return (data || []) as StripeConfig[];
     } catch (error) {
       console.error('Error fetching Stripe configs:', error);
       throw error;
@@ -177,13 +177,13 @@ class StripeService {
   async setActiveConfig(configId: string): Promise<void> {
     try {
       // Deactivate all configs
-      await supabase
+      await (supabase as any)
         .from('stripe_config')
         .update({ is_active: false })
         .neq('id', configId);
 
       // Activate selected config
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('stripe_config')
         .update({ is_active: true })
         .eq('id', configId);
@@ -200,7 +200,7 @@ class StripeService {
    */
   async deleteConfig(configId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('stripe_config')
         .delete()
         .eq('id', configId);
