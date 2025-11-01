@@ -9,7 +9,7 @@ import { SecurityProvider } from "@/components/security/SecurityProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { errorService } from "@/services/errorService";
 
-import AdminLogin from "@/pages/AdminLogin";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PasswordReset from "./pages/PasswordReset";
@@ -61,11 +61,14 @@ const App = () => {
                   <Route path="/pricing" element={<PricingPage />} />
                   <Route path="/checkout" element={<PricingPage />} />
                   
-                  {/* Auth Routes - redirect if already authenticated */}
+                  {/* Auth Routes - unified authentication */}
                   <Route path="/auth" element={<ProtectedRoute requireAuth={false}><Auth /></ProtectedRoute>} />
                   <Route path="/password-reset" element={<ProtectedRoute requireAuth={false}><PasswordReset /></ProtectedRoute>} />
                   <Route path="/signup-flow" element={<ProtectedRoute requireAuth={false}><SignupFlow /></ProtectedRoute>} />
                   <Route path="/restaurant-signup" element={<ProtectedRoute requireAuth={false}><RestaurantSignupFlow /></ProtectedRoute>} />
+                  
+                  {/* Legacy route redirects */}
+                  <Route path="/admin/login" element={<Auth />} />
                   
                   {/* Protected Dashboard Routes */}
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -81,7 +84,6 @@ const App = () => {
                   <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                   
                   {/* Admin Routes */}
-                  <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/overview" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/restaurants" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />

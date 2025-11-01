@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,10 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import BrandLogo from "@/components/BrandLogo";
-import { Mail, Lock, MessageCircle, User } from "lucide-react";
+import { Mail, Lock, User, Shield, Store } from "lucide-react";
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
@@ -18,18 +17,22 @@ import { validateAndSanitizeInput, validateEmail, validateWhatsappNumber } from 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState<string>('');
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  const isAdminMode = searchParams.get('mode') === 'admin';
+  const returnUrl = searchParams.get('returnUrl');
 
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      if (session?.user && !isAdminMode) {
         navigate("/dashboard/overview");
       }
     };
     checkUser();
-  }, [navigate]);
+  }, [navigate, isAdminMode]);
 
   const handleSignUp = async (formData: FormData) => {
     setLoading(true);
@@ -151,21 +154,57 @@ const Auth = () => {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
+      if (authError) throw authError;
+
+      // If admin mode, verify admin access
+      if (isAdminMode) {
+        if (!authData.user) {
+          throw new Error("Authentication failed");
+        }
+
+        const { data: isAdmin, error: roleError } = await supabase.rpc('verify_admin_access', {
+          p_user_id: authData.user.id
+        });
+
+        if (roleError) {
+          console.error('Admin verification error:', roleError);
+          throw new Error("Failed to verify admin access");
+        }
+
+        if (!isAdmin) {
+          await supabase.auth.signOut();
+          throw new Error("Access denied. You don't have admin privileges.");
+        }
+
+        toast({
+          title: "Welcome Admin!",
+          description: "Successfully verified admin access."
+        });
+        
+        const redirectTo = returnUrl && returnUrl !== '/admin/login' ? returnUrl : '/admin';
+        navigate(redirectTo);
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "Successfully signed in."
+        });
+        navigate("/dashboard/overview");
+      }
+    } catch (error: any) {
       toast({
         title: "Sign In Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      navigate("/dashboard/overview");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -173,180 +212,256 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 text-primary mb-4">
-            <BrandLogo size="3xl" />
+            {isAdminMode ? (
+              <Shield className="h-12 w-12" />
+            ) : (
+              <BrandLogo size="3xl" />
+            )}
           </div>
           <p className="text-muted-foreground">
-            Create beautiful QR menus for your restaurant
+            {isAdminMode 
+              ? "Access the administrative dashboard" 
+              : "Create beautiful QR menus for your restaurant"
+            }
           </p>
         </div>
 
         <Card className="shadow-elevated">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome</CardTitle>
+            <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
+              {isAdminMode && <Shield className="h-6 w-6 text-primary" />}
+              {isAdminMode ? "Admin Login" : "Welcome"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              {isAdminMode 
+                ? "Sign in with your admin credentials" 
+                : "Sign in to your account or create a new one"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
+            {isAdminMode ? (
+              // Admin Sign In Only
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                handleSignIn(formData);
+              }} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="admin-email">Admin Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="admin-email"
+                      name="email"
+                      type="email"
+                      placeholder="admin@example.com"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="admin-password"
+                      name="password"
+                      type="password"
+                      placeholder="Enter admin password"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg" 
+                  disabled={loading}
+                  variant="gradient"
+                >
+                  {loading ? "Signing in..." : "Sign In to Admin Panel"}
+                </Button>
+              </form>
+            ) : (
+              // Regular User Auth
+              <Tabs defaultValue="signin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="signin">
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  handleSignIn(formData);
-                }} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signin-email"
-                        name="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        className="pl-10"
-                        required
-                      />
+                <TabsContent value="signin">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    handleSignIn(formData);
+                  }} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signin-email"
+                          name="email"
+                          type="email"
+                          placeholder="your@email.com"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signin-password"
-                        name="password"
-                        type="password"
-                        placeholder="Your password"
-                        className="pl-10"
-                        required
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-password">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signin-password"
+                          name="password"
+                          type="password"
+                          placeholder="Your password"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="text-sm p-0 h-auto"
-                      onClick={() => navigate("/password-reset")}
+                    
+                    <div className="text-right">
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="text-sm p-0 h-auto"
+                        onClick={() => navigate("/password-reset")}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      size="lg" 
+                      disabled={loading}
+                      variant="gradient"
                     >
-                      Forgot password?
+                      {loading ? "Signing in..." : "Sign In"}
                     </Button>
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    size="lg" 
-                    disabled={loading}
-                    variant="gradient"
-                  >
-                    {loading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
+                  </form>
+                </TabsContent>
 
-              <TabsContent value="signup">
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  handleSignUp(formData);
-                }} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Restaurant Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-name"
-                        name="name"
-                        placeholder="My Restaurant"
-                        className="pl-10"
-                        required
-                      />
+                <TabsContent value="signup">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    handleSignUp(formData);
+                  }} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name">Restaurant Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-name"
+                          name="name"
+                          placeholder="My Restaurant"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-email"
-                        name="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        className="pl-10"
-                        required
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-email"
+                          name="email"
+                          type="email"
+                          placeholder="your@email.com"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-password"
-                        name="password"
-                        type="password"
-                        placeholder="Choose a strong password"
-                        className="pl-10"
-                        required
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-password"
+                          name="password"
+                          type="password"
+                          placeholder="Choose a strong password"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-whatsapp">WhatsApp Number</Label>
-                    <div className="relative">
-                      <PhoneInput
-                        value={whatsappNumber}
-                        onChange={(value) => setWhatsappNumber(value || '')}
-                        defaultCountry="RW"
-                        placeholder="WhatsApp number"
-                        international
-                        countryCallingCodeEditable={false}
-                        required
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-whatsapp">WhatsApp Number</Label>
+                      <div className="relative">
+                        <PhoneInput
+                          value={whatsappNumber}
+                          onChange={(value) => setWhatsappNumber(value || '')}
+                          defaultCountry="RW"
+                          placeholder="WhatsApp number"
+                          international
+                          countryCallingCodeEditable={false}
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    size="lg" 
-                    disabled={loading}
-                    variant="gradient"
-                  >
-                    {loading ? "Creating Account..." : "Create Account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      size="lg" 
+                      disabled={loading}
+                      variant="gradient"
+                    >
+                      {loading ? "Creating Account..." : "Create Account"}
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
 
-      <div className="text-center mt-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/")}
-          className="text-muted-foreground"
-        >
-          ← Back to Home
-        </Button>
-        
-        <div className="mt-2">
+        <div className="text-center mt-6 space-y-2">
           <Button
-            variant="link"
-            onClick={() => navigate("/signup-flow")}
-            className="text-primary"
+            variant="ghost"
+            onClick={() => navigate("/")}
+            className="text-muted-foreground"
           >
-            Try our guided signup experience
+            ← Back to Home
           </Button>
+          
+          {!isAdminMode && (
+            <>
+              <div>
+                <Button
+                  variant="link"
+                  onClick={() => navigate("/restaurant-signup")}
+                  className="text-primary flex items-center gap-2 mx-auto"
+                >
+                  <Store className="h-4 w-4" />
+                  Restaurant Signup with Plan Selection
+                </Button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Admin? <Button 
+                  variant="link" 
+                  onClick={() => navigate("/auth?mode=admin")}
+                  className="text-xs p-0 h-auto"
+                >
+                  Sign in here
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-      </div>
       </div>
     </div>
   );
