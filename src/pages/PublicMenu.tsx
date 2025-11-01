@@ -12,6 +12,7 @@ import { MenuCard } from "@/components/menu/MenuCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RestrictedMenuView from "@/components/RestrictedMenuView";
 import { simplePaymentAccessControl } from "@/services/simplePaymentAccessControl";
+import { SafeImage } from "@/components/ui/safe-image";
 
 // Define interfaces for our data types
 interface Restaurant {
@@ -105,7 +106,7 @@ interface CartItem {
 const RestaurantLogo = ({ name, logoUrl }: { name: string; logoUrl?: string }) => {
   if (logoUrl) {
     return (
-      <img 
+      <SafeImage 
         src={logoUrl}
         alt={`${name} logo`}
         className="h-12 w-12 object-cover rounded-lg border-2 border-primary/20"
@@ -601,7 +602,7 @@ const PublicMenu = () => {
               }}
             >
               {restaurant.logo_url ? (
-                <img 
+                <SafeImage 
                   src={restaurant.logo_url} 
                   alt={restaurant.name}
                   className="w-full h-full object-cover"
@@ -625,9 +626,14 @@ const PublicMenu = () => {
         </div>
 
         {/* Menu Group Tabs (Cuisines) */}
-        {menuGroups.length > 1 && (
+        {menuGroups.length > 0 && (
           <div className="px-4 mb-6">
             <div className="max-w-md mx-auto">
+              {menuGroups.length > 1 && (
+                <h2 className="text-center text-sm font-semibold mb-3 uppercase tracking-wider opacity-90" style={{ color: restaurant.text_color || '#FFFFFF' }}>
+                  🍽️ Choose Your Cuisine
+                </h2>
+              )}
               <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
                 {menuGroups.map((group) => {
                   const isActive = selectedMenuGroup === group.id;
@@ -1081,7 +1087,7 @@ const SimpleMenuCard = ({ item, variations, accompaniments, onAddToCart, onRemov
           restaurant.card_style === 'sharp' ? 'rounded-none' : 'rounded-xl'
         }`}>
           {item.image_url ? (
-            <img 
+            <SafeImage 
               src={item.image_url} 
               alt={item.name}
               className="w-full h-full object-cover"

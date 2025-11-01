@@ -27,6 +27,9 @@ import RestaurantSignupFlow from "./pages/RestaurantSignupFlow";
 import NotFound from "./pages/NotFound";
 import EmbedMenu from "./components/EmbedMenu";
 import AIMenuImport from "./pages/AIMenuImport";
+import MenuManagement from "./pages/MenuManagement";
+import UserProfile from "./pages/UserProfile";
+import { ProtectedRoute, AdminProtectedRoute } from "./components/ProtectedRoute";
 
 import { createOptimizedQueryClient } from '@/lib/queryOptimization';
 
@@ -52,43 +55,51 @@ const App = () => {
                 <Sonner />
                 <BrowserRouter>
                 <Routes>
+                  {/* Public Routes */}
                   <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/password-reset" element={<PasswordReset />} />
-                  <Route path="/signup-flow" element={<SignupFlow />} />
-                  <Route path="/restaurant-signup" element={<RestaurantSignupFlow />} />
-                  
-                  {/* Dashboard Routes */}
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/dashboard/overview" element={<Dashboard />} />
-                  <Route path="/dashboard/menu" element={<Dashboard />} />
-                  <Route path="/dashboard/qr" element={<Dashboard />} />
-                  <Route path="/dashboard/embed" element={<Dashboard />} />
-                  <Route path="/dashboard/ai-import" element={<AIMenuImport />} />
-                  <Route path="/dashboard/subscription" element={<Subscription />} />
-                  <Route path="/dashboard/settings" element={<RestaurantSettings />} />
-                  
-                  {/* Admin Routes */}
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/overview" element={<AdminDashboard />} />
-                  <Route path="/admin/restaurants" element={<AdminDashboard />} />
-                  <Route path="/admin/packages" element={<AdminDashboard />} />
-                  <Route path="/admin/payment-gateways" element={<AdminDashboard />} />
-                  <Route path="/admin/subscriptions" element={<AdminDashboard />} />
-                  <Route path="/admin/manual-payments" element={<AdminDashboard />} />
-                  <Route path="/admin/whatsapp" element={<AdminDashboard />} />
-                  
-                  <Route path="/dashboard/payment" element={<Payment />} />
-                  <Route path="/payment" element={<Payment />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/pricing" element={<PricingPage />} />
                   <Route path="/checkout" element={<PricingPage />} />
-                  <Route path="/seed" element={<SeedPage />} />
+                  
+                  {/* Auth Routes - redirect if already authenticated */}
+                  <Route path="/auth" element={<ProtectedRoute requireAuth={false}><Auth /></ProtectedRoute>} />
+                  <Route path="/password-reset" element={<ProtectedRoute requireAuth={false}><PasswordReset /></ProtectedRoute>} />
+                  <Route path="/signup-flow" element={<ProtectedRoute requireAuth={false}><SignupFlow /></ProtectedRoute>} />
+                  <Route path="/restaurant-signup" element={<ProtectedRoute requireAuth={false}><RestaurantSignupFlow /></ProtectedRoute>} />
+                  
+                  {/* Protected Dashboard Routes */}
+                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard/overview" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard/menu" element={<ProtectedRoute><MenuManagement /></ProtectedRoute>} />
+                  <Route path="/dashboard/qr" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard/embed" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard/ai-import" element={<ProtectedRoute><AIMenuImport /></ProtectedRoute>} />
+                  <Route path="/dashboard/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
+                  <Route path="/dashboard/settings" element={<ProtectedRoute><RestaurantSettings /></ProtectedRoute>} />
+                  <Route path="/dashboard/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+                  <Route path="/dashboard/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+                  <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+                  
+                  {/* Admin Routes */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/overview" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/restaurants" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/packages" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/payment-gateways" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/subscriptions" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/manual-payments" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/whatsapp" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                  
+                  {/* Public Menu Routes */}
                   <Route path="/menu/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
                   <Route path="/user/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
                   <Route path="/embed/:restaurantSlug" element={<EmbedMenu />} />
+                  
+                  {/* Development/Testing Route */}
+                  <Route path="/seed" element={<SeedPage />} />
+                  
+                  {/* 404 Not Found */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

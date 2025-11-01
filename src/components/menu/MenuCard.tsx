@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface MenuCardProps {
   item: {
@@ -73,7 +74,7 @@ export const MenuCard = ({
         {/* Item Image */}
         {item.image_url && (
           <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 mr-4">
-            <img
+            <SafeImage
               src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover"

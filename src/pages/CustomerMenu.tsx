@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface MenuVariant {
   id: string;
@@ -355,7 +356,7 @@ Thank you for your order!`;
                   {/* Image */}
                   {item.image_url && (
                     <div className="relative w-24 h-24 md:w-32 md:h-32 flex-shrink-0 overflow-hidden">
-                      <img 
+                      <SafeImage 
                         src={item.image_url} 
                         alt={item.name}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"

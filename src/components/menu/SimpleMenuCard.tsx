@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import {
@@ -139,7 +140,7 @@ export function SimpleMenuCard({
     >
       <div className="flex gap-4">
         {item.image_url && (
-          <img
+          <SafeImage
             src={item.image_url}
             alt={item.name}
             className="w-24 h-24 object-cover rounded-lg flex-shrink-0"

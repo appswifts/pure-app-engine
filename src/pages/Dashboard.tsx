@@ -106,29 +106,10 @@ const Dashboard = () => {
           // Use stored restaurant if found, otherwise use the first one
           setRestaurant(selectedRestaurant || userRestaurants[0]);
         } else {
-          // If no restaurant exists, try to create one
-          // RestaurantLoader will check for existence first to prevent duplicates
-          console.log('No restaurants found, attempting to create one...');
-          const createResult = await RestaurantLoader.createRestaurantWithRetry(
-            session.user.id,
-            session.user.email || ""
-          );
-          
-          if (createResult.error) {
-            console.error('Failed to create restaurant:', createResult.error);
-            throw createResult.error;
-          } else if (createResult.restaurant) {
-            setRestaurant(createResult.restaurant);
-            setRestaurants([createResult.restaurant]);
-            // Only show success toast if it's a new restaurant
-            const isNewRestaurant = !userRestaurants || userRestaurants.length === 0;
-            if (isNewRestaurant) {
-              toast({
-                title: "Welcome!",
-                description: "Your restaurant profile has been created.",
-              });
-            }
-          }
+          // No restaurant exists - user needs to create one manually
+          console.log('No restaurants found. User should create one in Menu Management.');
+          setRestaurant(null);
+          setRestaurants([]);
         }
       } catch (error) {
         handleError(

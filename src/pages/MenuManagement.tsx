@@ -15,8 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Edit2, Trash2, UtensilsCrossed, Eye, EyeOff, AlertCircle, ChefHat, Layers, Coffee, Settings, Globe } from "lucide-react";
+import { Plus, Edit2, Trash2, UtensilsCrossed, Eye, EyeOff, AlertCircle, ChefHat, Layers, Coffee, Settings, Globe, Store } from "lucide-react";
 import MenuGroupManager from "@/components/dashboard/MenuGroupManager";
+import { MenuHierarchyGuide } from "@/components/dashboard/MenuHierarchyGuide";
+import RestaurantAccordion from "@/components/dashboard/RestaurantAccordion";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
@@ -32,6 +34,7 @@ type MenuItem = Tables<"menu_items"> & {
 
 const MenuManagement = () => {
   const { user, isAuthenticated } = useAuth();
+  const [currentRestaurant, setCurrentRestaurant] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [accompaniments, setAccompaniments] = useState<Accompaniment[]>([]);
@@ -46,6 +49,47 @@ const MenuManagement = () => {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const { toast } = useToast();
+
+  // Load initial restaurant - only once
+  useEffect(() => {
+    if (isAuthenticated && user && !currentRestaurant) {
+      loadInitialRestaurant();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadInitialRestaurant = async () => {
+    try {
+      if (!user?.id) return;
+      
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error loading restaurant:", error);
+        return;
+      }
+      
+      if (data) {
+        setCurrentRestaurant(data);
+      }
+      setDataLoading(false);
+    } catch (error) {
+      console.error("Error loading restaurant:", error);
+      setDataLoading(false);
+    }
+  };
+
+  const handleRestaurantChange = (restaurant: any) => {
+    setCurrentRestaurant(restaurant);
+    // Reset selections when switching restaurants
+    setSelectedMenuGroupId(null);
+    setSelectedCategory("all");
+  };
 
   const [itemForm, setItemForm] = useState({
     name: "",
@@ -72,44 +116,26 @@ const MenuManagement = () => {
   });
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      ensureRestaurantExists();
-    }
-  }, [isAuthenticated, user]);
-
-  const ensureRestaurantExists = async () => {
-    try {
-      if (!user) return;
-      
-      console.log("Loading menu data for user:", user.id);
-      
-      // Just fetch data - restaurant should already exist from auth
-      // No need to create or check for restaurant here
-      fetchCategories();
-      fetchItems();
-      fetchAccompaniments();
-    } catch (error) {
-      console.error("Error loading menu data:", error);
-      // Still try to fetch data even if this fails
+    if (currentRestaurant) {
       fetchCategories();
       fetchItems();
       fetchAccompaniments();
     }
-  };
+  }, [currentRestaurant, selectedMenuGroupId]);
 
   const fetchCategories = async () => {
     try {
-      if (!user) {
-        console.error("No authenticated user found");
+      if (!currentRestaurant) {
+        console.error("No restaurant selected");
         return;
       }
 
-      console.log("Fetching categories for user:", user.id);
+      console.log("Fetching categories for restaurant:", currentRestaurant.id);
       
       let query = supabase
         .from("categories")
         .select("*")
-        .eq("restaurant_id", user.id);
+        .eq("restaurant_id", currentRestaurant.id);
 
       // Filter by menu group if selected
       if (selectedMenuGroupId) {
@@ -139,8 +165,8 @@ const MenuManagement = () => {
 
   const fetchItems = async () => {
     try {
-      if (!user) {
-        console.error("No authenticated user found");
+      if (!currentRestaurant) {
+        console.error("No restaurant selected");
         return;
       }
 
@@ -151,7 +177,7 @@ const MenuManagement = () => {
           item_variations(*),
           accompaniments(*)
         `)
-        .eq("restaurant_id", user.id)
+        .eq("restaurant_id", currentRestaurant.id)
         .order("display_order");
 
       if (selectedCategory && selectedCategory !== "all") {
@@ -391,7 +417,14 @@ const MenuManagement = () => {
     setLoading(true);
 
     try {
-      if (!user) throw new Error("User not authenticated");
+      if (!currentRestaurant) {
+        toast({
+          title: "No restaurant selected",
+          description: "Please select a restaurant first",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (!selectedMenuGroupId && !editingCategory) {
         toast({
@@ -404,7 +437,7 @@ const MenuManagement = () => {
 
       const categoryData = {
         ...categoryForm,
-        restaurant_id: user.id,
+        restaurant_id: currentRestaurant.id,
         menu_group_id: editingCategory?.menu_group_id || selectedMenuGroupId,
         display_order: editingCategory?.display_order || categories.length
       };
@@ -568,29 +601,51 @@ const MenuManagement = () => {
               </div>
             ) : (
               <>
-                {/* Menu Groups Management */}
+                {/* Restaurant Selector */}
                 {user && (
-                  <MenuGroupManager
-                    restaurantId={user.id}
-                    selectedMenuGroupId={selectedMenuGroupId}
-                    onMenuGroupSelect={setSelectedMenuGroupId}
-                  />
+                  <>
+                    <RestaurantAccordion
+                      currentRestaurant={currentRestaurant}
+                      onRestaurantChange={handleRestaurantChange}
+                      userId={user.id}
+                    />
+                    <Separator className="my-6" />
+                  </>
                 )}
 
-                <Separator className="my-8" />
-
-                {/* Categories Management */}
-                {!selectedMenuGroupId ? (
+                {!currentRestaurant ? (
                   <Card>
                     <CardContent className="py-12 text-center">
-                      <Globe className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">Select a Menu Group</h3>
+                      <Store className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">Select a Restaurant</h3>
                       <p className="text-muted-foreground">
-                        Please select a cuisine/menu group above to manage its categories and items
+                        Please select or create a restaurant above to manage its menu
                       </p>
                     </CardContent>
                   </Card>
                 ) : (
+                  <>
+                    {/* Menu Groups Management */}
+                    <MenuGroupManager
+                      restaurantId={currentRestaurant.id}
+                      selectedMenuGroupId={selectedMenuGroupId}
+                      onMenuGroupSelect={setSelectedMenuGroupId}
+                    />
+
+                    <Separator className="my-8" />
+
+                    {/* Categories Management */}
+                    {!selectedMenuGroupId ? (
+                      <Card>
+                        <CardContent className="py-12 text-center">
+                          <Globe className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                          <h3 className="text-lg font-semibold mb-2">Select a Menu Group</h3>
+                          <p className="text-muted-foreground">
+                            Please select a cuisine/menu group above to manage its categories and items
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -700,10 +755,10 @@ const MenuManagement = () => {
                      </div>
                    </CardContent>
                  </Card>
-                )}
+                    )}
 
-                {/* Accompaniments Management - Simplified */}
-                {selectedMenuGroupId && (
+                    {/* Accompaniments Management - Simplified */}
+                    {selectedMenuGroupId && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -1010,7 +1065,9 @@ const MenuManagement = () => {
                   </div>
                  </CardContent>
                </Card>
-               )}
+                    )}
+                  </>
+                )}
               </>
             )}
           </div>

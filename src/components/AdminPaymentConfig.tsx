@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Banknote, 
   Settings, 
@@ -16,6 +17,21 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react';
+import { z } from 'zod';
+
+// Validation schema
+const paymentConfigSchema = z.object({
+  bankName: z.string().min(3, 'Bank name must be at least 3 characters').max(100, 'Bank name too long').optional().or(z.literal('')),
+  bankAccountNumber: z.string()
+    .regex(/^[0-9]{10,20}$/, 'Account number must be 10-20 digits')
+    .optional().or(z.literal('')),
+  bankAccountName: z.string().min(3, 'Account name must be at least 3 characters').max(100, 'Account name too long').optional().or(z.literal('')),
+  mobileMoneyNumber: z.string()
+    .regex(/^\+?[0-9]{10,15}$/, 'Invalid phone number format (10-15 digits, optional +)')
+    .optional().or(z.literal('')),
+  mobileMoneyProvider: z.string().min(2, 'Provider name must be at least 2 characters').optional().or(z.literal('')),
+  paymentInstructions: z.string().max(1000, 'Instructions too long (max 1000 characters)').optional().or(z.literal(''))
+});
 
 const AdminPaymentConfig = () => {
   const { toast } = useToast();
@@ -70,7 +86,20 @@ const AdminPaymentConfig = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // First check if config exists
+      // Validate configuration
+      const validationResult = paymentConfigSchema.safeParse(config);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => err.message).join(', ');
+        toast({
+          title: 'Validation Error',
+          description: errors,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Check if config exists
       const { data: existingConfig } = await supabase
         .from('manual_payment_config')
         .select('id')

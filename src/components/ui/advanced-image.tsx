@@ -93,6 +93,7 @@ export const AdvancedImage = ({
         setIsLoaded(true);
         onLoad?.();
       } catch (error) {
+        // Silently handle image loading errors to prevent console noise
         setHasError(true);
         setCurrentSrc(fallback);
         onError?.();

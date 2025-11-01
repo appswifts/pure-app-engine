@@ -333,25 +333,24 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
         ))}
       </Accordion>
 
-      {/* AI Image Generation Banner */}
-      {!isGeneratingImages && (
-        <Card className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+      {/* Optional Image Generation - Disabled (requires Hugging Face API key) */}
+      {false && !isGeneratingImages && (
+        <Card className="p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-start space-x-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <Sparkles className="w-5 h-5 text-purple-600" />
+                <ImageIcon className="w-6 h-6 text-purple-600" />
               </div>
               <div>
                 <h4 className="font-semibold text-gray-900">Generate AI Images</h4>
                 <p className="text-sm text-gray-600">
-                  Create professional food photos for all items using AI (FREE)
+                  Create professional food photos for all items using AI (requires API setup)
                 </p>
               </div>
             </div>
             <Button
               variant="outline"
-              onClick={handleGenerateImages}
-              disabled={isImporting || totalItems === 0}
+              disabled={true}
               className="border-purple-300 hover:bg-purple-100"
             >
               <ImageIcon className="w-4 h-4 mr-2" />

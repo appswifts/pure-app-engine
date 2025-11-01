@@ -22,10 +22,13 @@ import {
   setProvider,
   extractMenuFromImage,
   extractMenuFromPDF,
+  extractMenuFromFile,
   fileToBase64,
   validateExtractedData,
+  detectFileType,
   type ExtractedMenuData,
   type AIProvider,
+  type SupportedFileType,
 } from '@/lib/services/ai-menu-import';
 
 interface Restaurant {
@@ -114,8 +117,11 @@ export default function AIMenuImport() {
 
       setRestaurants(data || []);
 
-      // Don't auto-select - let user choose
-      // This fixes the issue where selection gets stuck
+      // Auto-select if only one restaurant
+      if (data && data.length === 1) {
+        setSelectedRestaurant(data[0].id);
+        toast.success(`Auto-selected: ${data[0].name}`);
+      }
     } catch (error: any) {
       console.error('Error fetching restaurants:', error);
       toast.error('Failed to load restaurants');
@@ -124,30 +130,53 @@ export default function AIMenuImport() {
 
   const fetchMenuGroups = async (restaurantId: string) => {
     try {
-      // Note: There's no menu_groups table - categories belong directly to restaurants
-      // This function is kept for backwards compatibility but returns empty
-      setMenuGroups([]);
-    } catch (error: any) {
-      console.error('Error fetching menu groups:', error);
-      toast.error('Failed to load menu groups');
-    }
-  };
-
-  const fetchCategories = async (restaurantId: string) => {
-    try {
       const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
+        .from('menu_groups')
+        .select('id, name, restaurant_id')
         .eq('restaurant_id', restaurantId)
         .eq('is_active', true)
         .order('display_order');
 
       if (error) throw error;
 
+      setMenuGroups(data || []);
+      
+      // Auto-select first menu group if available
+      if (data && data.length > 0) {
+        setSelectedMenuGroup(data[0].id);
+        toast.success(`Auto-selected: ${data[0].name}`);
+      } else {
+        setSelectedMenuGroup('');
+        toast.info('No menu groups found. Create one in Menu Management first.');
+      }
+    } catch (error: any) {
+      console.error('Error fetching menu groups:', error);
+      toast.error('Failed to load menu groups');
+      setMenuGroups([]);
+    }
+  };
+
+  const fetchCategories = async (menuGroupId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('menu_group_id', menuGroupId)
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+
       setCategories(data || []);
+      
+      // Show info about existing categories
+      if (data && data.length > 0) {
+        console.log(`Loaded ${data.length} existing categories for smart matching`);
+      }
     } catch (error: any) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load categories');
+      setCategories([]);
     }
   };
 
@@ -185,27 +214,58 @@ export default function AIMenuImport() {
       return;
     }
 
+    if (!selectedRestaurant) {
+      toast.error('Please select a restaurant first');
+      return;
+    }
+
+    if (!selectedMenuGroup) {
+      toast.error('Please select a menu group first');
+      return;
+    }
+
     setIsProcessing(true);
     setProgress(0);
 
     try {
-      setProgress(20);
-      toast.info('Converting image...');
-      const base64 = await fileToBase64(selectedFile);
+      const fileType = detectFileType(selectedFile);
+      const fileTypeNames: Record<SupportedFileType, string> = {
+        image: 'image',
+        pdf: 'PDF',
+        csv: 'CSV',
+        excel: 'Excel'
+      };
       
-      setProgress(50);
+      setProgress(10);
+      toast.info(`Processing ${fileTypeNames[fileType]} file...`);
+      
+      // Get existing categories for smart matching
+      setProgress(20);
+      const existingCats = categories.map(cat => ({ id: cat.id, name: cat.name }));
+      
+      setProgress(30);
       toast.info('Extracting menu data with AI...');
       
-      // Call secure Edge Function
-      const { data, error } = await supabase.functions.invoke('ai-menu-extract', {
-        body: { 
-          image: base64, 
-          fileType: selectedFile.type,
-          provider: aiProvider 
+      // Use intelligent extraction with category matching
+      const data = await extractMenuFromFile(selectedFile, existingCats);
+      
+      // Show category matching results
+      if (data.categoryMatches && data.categoryMatches.size > 0) {
+        let matchCount = 0;
+        let createCount = 0;
+        
+        data.categoryMatches.forEach((result: any) => {
+          if (result.match) matchCount++;
+          else if (result.shouldCreate) createCount++;
+        });
+        
+        if (matchCount > 0) {
+          toast.success(`Matched ${matchCount} existing categor${matchCount === 1 ? 'y' : 'ies'}`);
         }
-      });
-
-      if (error) throw error;
+        if (createCount > 0) {
+          toast.info(`Will create ${createCount} new categor${createCount === 1 ? 'y' : 'ies'}`);
+        }
+      }
       
       // Validate extracted data
       setProgress(80);
@@ -219,7 +279,10 @@ export default function AIMenuImport() {
       setProgress(100);
       setExtractedData(data);
       setCurrentStep('preview');
-      toast.success(`Successfully extracted ${data.categories.reduce((sum: number, cat: any) => sum + cat.items.length, 0)} items!`);
+      
+      const itemCount = data.categories.reduce((sum: number, cat: any) => sum + cat.items.length, 0);
+      const catCount = data.categories.length;
+      toast.success(`Successfully extracted ${itemCount} items in ${catCount} categor${catCount === 1 ? 'y' : 'ies'}!`);
       
     } catch (error: any) {
       console.error('Error processing file:', error);
@@ -236,31 +299,63 @@ export default function AIMenuImport() {
       return;
     }
 
+    if (!selectedMenuGroup) {
+      toast.error('No menu group selected');
+      return;
+    }
+
     setCurrentStep('importing');
 
     try {
       let importedCount = 0;
+      let createdCategories = 0;
+      let matchedCategories = 0;
 
       // Import each category and its items
       for (const category of data.categories) {
-        // Check if category exists or create new one
-        let categoryId = selectedCategory;
+        let categoryId: string | null = null;
 
+        // Check if we should use smart matching
+        if (selectedCategory === '__auto__' || !selectedCategory) {
+          // Try to find matching category using fuzzy matching
+          const existingCategories = categories;
+          const categoryMatch = existingCategories.find(
+            cat => cat.name.toLowerCase() === category.name.toLowerCase()
+          );
+
+          if (categoryMatch) {
+            categoryId = categoryMatch.id;
+            matchedCategories++;
+            console.log(`✓ Matched category: ${category.name} → ${categoryMatch.name}`);
+          }
+        } else {
+          // User manually selected a category
+          categoryId = selectedCategory;
+        }
+
+        // Create new category if no match found
         if (!categoryId) {
-          // Create new category
           const { data: newCategory, error: categoryError } = await supabase
             .from('categories')
             .insert({
+              menu_group_id: selectedMenuGroup,
               restaurant_id: selectedRestaurant,
               name: category.name,
-              description: category.description,
+              description: category.description || null,
               is_active: true,
+              display_order: 999,
             })
             .select('id')
             .single();
 
-          if (categoryError) throw categoryError;
+          if (categoryError) {
+            console.error('Category creation error:', categoryError);
+            throw categoryError;
+          }
+          
           categoryId = newCategory.id;
+          createdCategories++;
+          console.log(`✓ Created new category: ${category.name}`);
         }
 
         // Import menu items
@@ -277,9 +372,21 @@ export default function AIMenuImport() {
           .from('menu_items')
           .insert(itemsToInsert);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('Items insertion error:', itemsError);
+          throw itemsError;
+        }
 
         importedCount += itemsToInsert.length;
+        console.log(`✓ Imported ${itemsToInsert.length} items for ${category.name}`);
+      }
+
+      // Show summary
+      if (matchedCategories > 0) {
+        toast.success(`✓ Matched ${matchedCategories} existing categor${matchedCategories === 1 ? 'y' : 'ies'}`);
+      }
+      if (createdCategories > 0) {
+        toast.success(`✓ Created ${createdCategories} new categor${createdCategories === 1 ? 'y' : 'ies'}`);
       }
 
       // Record the import (optional - ai_imports table doesn't exist yet)
@@ -314,7 +421,7 @@ export default function AIMenuImport() {
   };
 
   const handleViewMenu = () => {
-    navigate('/menu-management');
+    navigate('/dashboard/menu');
   };
 
   return (
@@ -377,9 +484,9 @@ export default function AIMenuImport() {
                   <>
                     <div>
                       <Label htmlFor="menuGroup">
-                        Menu Group
+                        Menu Group *
                         <span className="text-sm text-gray-500 ml-2">
-                          Select which menu to import into
+                          Select which cuisine/menu to import into
                         </span>
                       </Label>
                       <Select
@@ -387,16 +494,38 @@ export default function AIMenuImport() {
                         onValueChange={setSelectedMenuGroup}
                       >
                         <SelectTrigger id="menuGroup">
-                          <SelectValue placeholder="Choose a menu group" />
+                          <SelectValue placeholder={
+                            menuGroups.length === 0 
+                              ? "No menu groups found - create one in Menu Management" 
+                              : "Choose a menu group (cuisine)"
+                          } />
                         </SelectTrigger>
                         <SelectContent>
-                          {menuGroups.map((group) => (
-                            <SelectItem key={group.id} value={group.id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
+                          {menuGroups.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              No menu groups available.
+                              <br />
+                              Create one in Menu Management first.
+                            </div>
+                          ) : (
+                            menuGroups.map((group) => (
+                              <SelectItem key={group.id} value={group.id}>
+                                {group.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
+                      {menuGroups.length === 0 && (
+                        <p className="text-sm text-orange-600 mt-2">
+                          ⚠️ Please create a menu group in Menu Management before importing
+                        </p>
+                      )}
+                      {menuGroups.length > 0 && (
+                        <p className="text-sm text-green-600 mt-2">
+                          ✓ {menuGroups.length} menu group{menuGroups.length !== 1 ? 's' : ''} available
+                        </p>
+                      )}
                     </div>
 
                     {selectedMenuGroup && (
@@ -404,7 +533,7 @@ export default function AIMenuImport() {
                         <Label htmlFor="category">
                           Category (Optional)
                           <span className="text-sm text-gray-500 ml-2">
-                            Leave empty to create new categories
+                            AI will auto-match or create new categories
                           </span>
                         </Label>
                         <Select
@@ -412,16 +541,38 @@ export default function AIMenuImport() {
                           onValueChange={setSelectedCategory}
                         >
                           <SelectTrigger id="category">
-                            <SelectValue placeholder="Create new categories automatically" />
+                            <SelectValue placeholder={
+                              categories.length === 0 
+                                ? "No existing categories - AI will create new ones" 
+                                : "Auto-detect categories (recommended)"
+                            } />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
+                            {categories.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">
+                                No existing categories.
+                                <br />
+                                AI will create new ones automatically.
+                              </div>
+                            ) : (
+                              <>
+                                <SelectItem value="__auto__">
+                                  🤖 Auto-detect (recommended)
+                                </SelectItem>
+                                {categories.map((category) => (
+                                  <SelectItem key={category.id} value={category.id}>
+                                    {category.name}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
+                        {categories.length > 0 && (
+                          <p className="text-sm text-blue-600 mt-2">
+                            ℹ️ {categories.length} existing categor{categories.length !== 1 ? 'ies' : 'y'} - AI will match automatically
+                          </p>
+                        )}
                       </div>
                     )}
                   </>

@@ -9,12 +9,45 @@ if (typeof window !== 'undefined') {
   const majorVersion = parseInt(pdfjsLib.version.split('.')[0]);
   const extension = majorVersion >= 4 ? 'mjs' : 'js';
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.${extension}`;
-  
-  console.log('PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 }
 
 // AI Provider types
 export type AIProvider = 'openai' | 'huggingface';
+
+// Supported file types
+export type SupportedFileType = 'image' | 'pdf' | 'excel' | 'csv';
+
+/**
+ * Detect file type from MIME type
+ */
+export const detectFileType = (file: File): SupportedFileType => {
+  const mimeType = file.type.toLowerCase();
+  const extension = file.name.split('.').pop()?.toLowerCase() || '';
+  
+  // Images
+  if (mimeType.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension)) {
+    return 'image';
+  }
+  
+  // PDF
+  if (mimeType === 'application/pdf' || extension === 'pdf') {
+    return 'pdf';
+  }
+  
+  // Excel
+  if (mimeType.includes('spreadsheet') || 
+      ['xlsx', 'xls', 'xlsm'].includes(extension)) {
+    return 'excel';
+  }
+  
+  // CSV
+  if (mimeType === 'text/csv' || extension === 'csv') {
+    return 'csv';
+  }
+  
+  // Default to image for unknown types
+  return 'image';
+};
 
 // Types for extracted menu data
 export interface ExtractedMenuItem {
@@ -35,6 +68,7 @@ export interface ExtractedMenuData {
   restaurant_name?: string;
   categories: ExtractedCategory[];
   raw_text?: string;
+  detected_categories?: string[]; // Categories detected from document
 }
 
 // Initialize AI clients
@@ -961,4 +995,216 @@ export const generateMenuItemImages = async (
   
   console.log(`Image generation complete. Generated ${imageMap.size}/${items.length} images.`);
   return imageMap;
+};
+
+/**
+ * Smart category matching - finds best match from existing categories
+ * Uses fuzzy matching and similarity scoring
+ */
+export const matchCategory = (
+  detectedCategory: string,
+  existingCategories: { id: string; name: string }[]
+): { match: { id: string; name: string } | null; similarity: number; shouldCreate: boolean } => {
+  if (!existingCategories || existingCategories.length === 0) {
+    return { match: null, similarity: 0, shouldCreate: true };
+  }
+
+  const normalize = (str: string) => 
+    str.toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ');
+
+  const normalizedDetected = normalize(detectedCategory);
+  let bestMatch: { id: string; name: string } | null = null;
+  let highestSimilarity = 0;
+
+  for (const existing of existingCategories) {
+    const normalizedExisting = normalize(existing.name);
+    
+    // Exact match
+    if (normalizedDetected === normalizedExisting) {
+      return { match: existing, similarity: 1, shouldCreate: false };
+    }
+
+    // Contains check
+    if (normalizedDetected.includes(normalizedExisting) || 
+        normalizedExisting.includes(normalizedDetected)) {
+      const similarity = Math.max(
+        normalizedDetected.length / normalizedExisting.length,
+        normalizedExisting.length / normalizedDetected.length
+      ) * 0.9; // 90% similarity for contains
+      
+      if (similarity > highestSimilarity) {
+        highestSimilarity = similarity;
+        bestMatch = existing;
+      }
+    }
+
+    // Word overlap similarity
+    const detectedWords = normalizedDetected.split(' ');
+    const existingWords = normalizedExisting.split(' ');
+    const commonWords = detectedWords.filter(w => existingWords.includes(w));
+    const wordSimilarity = (commonWords.length * 2) / (detectedWords.length + existingWords.length);
+    
+    if (wordSimilarity > highestSimilarity) {
+      highestSimilarity = wordSimilarity;
+      bestMatch = existing;
+    }
+  }
+
+  // Use threshold of 0.7 (70% similarity) to auto-match
+  const shouldCreate = highestSimilarity < 0.7;
+  
+  return {
+    match: shouldCreate ? null : bestMatch,
+    similarity: highestSimilarity,
+    shouldCreate
+  };
+};
+
+/**
+ * Parse CSV file content
+ */
+export const parseCSV = async (file: File): Promise<ExtractedMenuData> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length === 0) {
+          reject(new Error('CSV file is empty'));
+          return;
+        }
+
+        // Parse header
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Find column indices
+        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('item'));
+        const priceIdx = headers.findIndex(h => h.includes('price') || h.includes('cost'));
+        const categoryIdx = headers.findIndex(h => h.includes('category') || h.includes('type'));
+        const descIdx = headers.findIndex(h => h.includes('desc') || h.includes('detail'));
+
+        if (nameIdx === -1 || priceIdx === -1) {
+          reject(new Error('CSV must have "name" and "price" columns'));
+          return;
+        }
+
+        const categoriesMap = new Map<string, ExtractedMenuItem[]>();
+        const detectedCategories: string[] = [];
+
+        // Parse data rows
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split(',').map(cell => cell.trim());
+          
+          const name = row[nameIdx];
+          const priceStr = row[priceIdx]?.replace(/[^0-9.]/g, '');
+          const price = parseFloat(priceStr) || 0;
+          const category = categoryIdx >= 0 ? row[categoryIdx] : 'Menu Items';
+          const description = descIdx >= 0 ? row[descIdx] : '';
+
+          if (!name || price === 0) continue;
+
+          if (!categoriesMap.has(category)) {
+            categoriesMap.set(category, []);
+            if (category !== 'Menu Items') {
+              detectedCategories.push(category);
+            }
+          }
+
+          categoriesMap.get(category)!.push({
+            name,
+            price,
+            category,
+            description: description || undefined,
+          });
+        }
+
+        const categories: ExtractedCategory[] = Array.from(categoriesMap.entries()).map(
+          ([name, items]) => ({
+            name,
+            items,
+          })
+        );
+
+        resolve({
+          categories,
+          detected_categories: detectedCategories,
+          raw_text: text,
+        });
+      } catch (error: any) {
+        reject(new Error(`Failed to parse CSV: ${error.message}`));
+      }
+    };
+
+    reader.onerror = () => reject(new Error('Failed to read CSV file'));
+    reader.readAsText(file);
+  });
+};
+
+/**
+ * Parse Excel file (requires additional library)
+ * For now, prompts user to export to CSV
+ */
+export const parseExcel = async (file: File): Promise<ExtractedMenuData> => {
+  // Note: Full Excel parsing requires xlsx library
+  // For MVP, we'll suggest CSV export
+  throw new Error(
+    'Excel files are not yet supported. Please export your Excel file to CSV format and try again. ' +
+    'In Excel: File → Save As → CSV (Comma delimited)'
+  );
+};
+
+/**
+ * Main export function - automatically detects file type and extracts menu
+ */
+export const extractMenuFromFile = async (
+  file: File,
+  existingCategories: { id: string; name: string }[] = []
+): Promise<ExtractedMenuData & { categoryMatches?: Map<string, any> }> => {
+  const fileType = detectFileType(file);
+  let extracted: ExtractedMenuData;
+
+  switch (fileType) {
+    case 'csv':
+      extracted = await parseCSV(file);
+      break;
+    
+    case 'excel':
+      extracted = await parseExcel(file);
+      break;
+    
+    case 'pdf':
+      extracted = await extractMenuFromPDF(file);
+      break;
+    
+    case 'image':
+    default:
+      const base64 = await fileToBase64(file);
+      extracted = await extractMenuFromImage(base64, file.type);
+      break;
+  }
+
+  // Smart category matching
+  const categoryMatches = new Map<string, any>();
+  
+  if (extracted.detected_categories && existingCategories.length > 0) {
+    for (const detectedCat of extracted.detected_categories) {
+      const matchResult = matchCategory(detectedCat, existingCategories);
+      categoryMatches.set(detectedCat, matchResult);
+      
+      console.log(`Category "${detectedCat}":`, matchResult.match 
+        ? `Matched to "${matchResult.match.name}" (${(matchResult.similarity * 100).toFixed(0)}%)`
+        : 'Will create new');
+    }
+  }
+
+  return {
+    ...extracted,
+    categoryMatches,
+  };
 };

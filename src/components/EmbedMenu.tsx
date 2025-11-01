@@ -18,6 +18,7 @@ import {
   ShoppingBag 
 } from "lucide-react";
 import { SimpleMenuCard } from "@/components/menu/SimpleMenuCard";
+import { SafeImage } from "@/components/ui/safe-image";
 import { MenuCard } from "@/components/menu/MenuCard";
 
 // Define interfaces for our data types
@@ -103,7 +104,7 @@ interface CartItem {
 const RestaurantLogo = ({ name, logoUrl }: { name: string; logoUrl?: string }) => {
   if (logoUrl) {
     return (
-      <img 
+      <SafeImage 
         src={logoUrl}
         alt={`${name} logo`}
         className="h-12 w-12 object-cover rounded-lg border-2 border-primary/20"
@@ -503,7 +504,7 @@ export default function EmbedMenu() {
               }}
             >
               {restaurant.logo_url ? (
-                <img 
+                <SafeImage 
                   src={restaurant.logo_url} 
                   alt={restaurant.name}
                   className="w-full h-full object-cover"

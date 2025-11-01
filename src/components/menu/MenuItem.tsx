@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,7 +86,7 @@ const MenuItem = ({ item, variations, accompaniments, onAddToCart, formatPrice }
         {/* Item Image */}
         {item.image_url && (
           <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 mr-4">
-            <img
+            <SafeImage
               src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover"

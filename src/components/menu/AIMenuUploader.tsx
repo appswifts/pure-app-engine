@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileImage, X, AlertCircle, Loader2, FileText } from 'lucide-react';
+import { Upload, FileImage, X, AlertCircle, Loader2, FileText, FileSpreadsheet, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,7 +28,13 @@ export const AIMenuUploader: React.FC<AIMenuUploaderProps> = ({
   const [isDragging, setIsDragging] = useState(false);
 
   const supportedTypes = getSupportedFileTypes();
-  const acceptedFormats = [...supportedTypes.images, ...(supportedTypes.pdfs || [])].join(', ');
+  const acceptedFormats = [
+    ...(supportedTypes.images || []),
+    ...(supportedTypes.pdfs || []),
+    '.csv',
+    '.xlsx',
+    '.xls'
+  ].join(', ');
 
   const handleFileValidation = (file: File): boolean => {
     setError(null);
@@ -140,11 +146,14 @@ export const AIMenuUploader: React.FC<AIMenuUploaderProps> = ({
             </div>
 
             <h3 className="text-lg font-semibold mb-2">
-              Upload Menu Image or PDF
+              Upload Menu Document
             </h3>
             
             <p className="text-sm text-gray-600 mb-4">
-              Drag and drop your menu image or PDF here, or click to browse
+              Drag and drop your menu file here, or click to browse
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              📄 PDF • 📷 Images (PNG, JPG) • 📊 CSV • 📈 Excel
             </p>
 
             <Button
@@ -167,8 +176,13 @@ export const AIMenuUploader: React.FC<AIMenuUploaderProps> = ({
             />
 
             <div className="mt-4 text-xs text-gray-500">
-              <p>Supported formats: {acceptedFormats}</p>
-              <p>Maximum file size: 10MB</p>
+              <p className="font-medium mb-1">✅ Supported Formats:</p>
+              <ul className="list-disc list-inside text-left max-w-md mx-auto">
+                <li>Images: PNG, JPG, JPEG, WEBP</li>
+                <li>Documents: PDF</li>
+                <li>Spreadsheets: CSV, Excel (.xlsx, .xls)</li>
+              </ul>
+              <p className="mt-2">Maximum file size: 10MB</p>
             </div>
           </div>
         </Card>
@@ -189,9 +203,15 @@ export const AIMenuUploader: React.FC<AIMenuUploaderProps> = ({
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
                 {selectedFile.type === 'application/pdf' ? (
-                  <FileText className="w-8 h-8 text-primary" />
+                  <FileText className="w-8 h-8 text-red-500" />
+                ) : selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv') ? (
+                  <FileSpreadsheet className="w-8 h-8 text-green-500" />
+                ) : selectedFile.type.includes('spreadsheet') || selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls') ? (
+                  <FileSpreadsheet className="w-8 h-8 text-green-600" />
+                ) : selectedFile.type.startsWith('image/') ? (
+                  <FileImage className="w-8 h-8 text-blue-500" />
                 ) : (
-                  <FileImage className="w-8 h-8 text-primary" />
+                  <File className="w-8 h-8 text-gray-500" />
                 )}
                 <div>
                   <p className="font-medium">{selectedFile.name}</p>
@@ -249,12 +269,12 @@ export const AIMenuUploader: React.FC<AIMenuUploaderProps> = ({
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Tips for best results:</strong>
+          <strong>💡 Tips for best results:</strong>
           <ul className="list-disc list-inside mt-2 text-sm space-y-1">
-            <li>Use clear, high-quality images</li>
-            <li>Ensure text is readable and not blurry</li>
-            <li>Include full menu sections in each image</li>
-            <li>Good lighting and minimal glare work best</li>
+            <li><strong>Images/PDFs:</strong> Use clear, high-quality scans with good lighting</li>
+            <li><strong>CSV:</strong> Use columns: Name, Price, Category, Description</li>
+            <li><strong>Excel:</strong> Export to CSV format for best compatibility</li>
+            <li><strong>AI Detection:</strong> Categories are auto-matched to existing ones!</li>
           </ul>
         </AlertDescription>
       </Alert>

@@ -39,9 +39,7 @@ export const useRestaurant = () => {
         // Take the first restaurant if any exist
         if (data && data.length > 0) {
           restaurant = data[0];
-          if (data.length > 1) {
-            console.warn(`Found ${data.length} duplicate restaurants for user ${user.id}, using the oldest one (id: ${restaurant.id})`);
-          }
+          // Silently handle duplicates - using oldest entry by created_at
           break;
         }
 

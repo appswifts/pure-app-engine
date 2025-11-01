@@ -22,17 +22,24 @@ import {
   CreditCard, 
   Settings,
   LogOut,
-  Sparkles
+  Sparkles,
+  Utensils,
+  Code,
+  User
 } from "lucide-react";
 
 const restaurantMenuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Restaurant", url: "/dashboard", icon: Store },
-  { title: "Menu", url: "/dashboard", icon: Store },
+  { title: "Overview", url: "/dashboard/overview", icon: Home },
+  { title: "Menu Management", url: "/dashboard/menu", icon: Utensils },
   { title: "AI Menu Import", url: "/dashboard/ai-import", icon: Sparkles },
-  { title: "Tables & QR Codes", url: "/dashboard", icon: QrCode },
-  { title: "Subscription & Payments", url: "/dashboard/subscription", icon: CreditCard },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
+  { title: "QR Codes & Tables", url: "/dashboard/qr", icon: QrCode },
+  { title: "Embed Menu", url: "/dashboard/embed", icon: Code },
+  { title: "Subscription", url: "/dashboard/subscription", icon: CreditCard },
+];
+
+const userMenuItems = [
+  { title: "User Profile", url: "/dashboard/profile", icon: User },
+  { title: "Account Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
 export function RestaurantSidebar() {
@@ -67,20 +74,43 @@ export function RestaurantSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2 py-1">
+        <div className="flex items-center gap-2 px-3 py-4">
           <Store className="h-6 w-6 text-primary" />
           {state === "expanded" && (
-            <span className="font-semibold text-sidebar-foreground">Restaurant</span>
+            <span className="font-semibold text-sidebar-foreground">MenuForest</span>
           )}
         </div>
       </SidebarHeader>
       
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupLabel>Restaurant</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {restaurantMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className={getNavCls}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {state === "expanded" && (
+                        <span>{item.title}</span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {userMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 
