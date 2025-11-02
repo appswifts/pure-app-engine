@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowLeft, Settings } from 'lucide-react';
+import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -383,13 +384,14 @@ export default function AIMenuImport() {
           console.log(`✓ Created new category: ${category.name}`);
         }
 
-        // Import menu items
+        // Import menu items (with AI-generated images if available)
         const itemsToInsert = category.items.map((item) => ({
           restaurant_id: selectedRestaurant,
           category_id: categoryId,
           name: item.name,
           description: item.description || null,
           base_price: item.price,
+          image_url: item.image_url || null,
           is_available: true,
         }));
 
@@ -450,7 +452,7 @@ export default function AIMenuImport() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <DashboardLayout>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -804,6 +806,6 @@ export default function AIMenuImport() {
           </Card>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

@@ -20,8 +20,12 @@ export default {
 		extend: {
 			fontFamily: {
 				sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Arial', 'sans-serif'],
+				display: ['Work Sans', 'sans-serif'],
 			},
 			colors: {
+				'primary-green': '#38e07b',
+				'background-light': '#f6f8f7',
+				'background-dark': '#122017',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

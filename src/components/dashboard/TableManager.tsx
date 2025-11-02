@@ -27,11 +27,11 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 
 interface TableData {
   id: string;
+  restaurant_id: string;
   name: string;
   slug: string;
-  seats?: number;
-  location?: string;
-  restaurant_id: string;
+  qr_code_url: string | null;
+  qr_code_data: string | null;
   created_at: string;
 }
 
@@ -92,8 +92,8 @@ const TableManager = () => {
       setEditingTable(table);
       setFormData({
         name: table.name,
-        seats: table.seats?.toString() || "",
-        location: table.location || "",
+        seats: "",
+        location: "",
       });
     } else {
       setEditingTable(null);
@@ -137,8 +137,6 @@ const TableManager = () => {
           .update({
             name: formData.name,
             slug: slug,
-            seats: formData.seats ? parseInt(formData.seats) : null,
-            location: formData.location || null,
           })
           .eq("id", editingTable.id);
 
@@ -156,8 +154,7 @@ const TableManager = () => {
             restaurant_id: restaurantId,
             name: formData.name,
             slug: slug,
-            seats: formData.seats ? parseInt(formData.seats) : null,
-            location: formData.location || null,
+            qr_code_data: `${restaurantId}/${slug}`,
           });
 
         if (error) throw error;
@@ -260,8 +257,7 @@ const TableManager = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Slug</TableHead>
-                  <TableHead>Seats</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead>QR Code</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -275,10 +271,11 @@ const TableManager = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {table.seats ? `${table.seats} seats` : "-"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {table.location || "-"}
+                      {table.qr_code_url ? (
+                        <Badge variant="default">Generated</Badge>
+                      ) : (
+                        <Badge variant="secondary">Not Generated</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

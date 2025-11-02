@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import PublicMenu from "./pages/PublicMenu";
 import MenuGroupSelect from "./pages/MenuGroupSelect";
 import RestaurantSettings from "./pages/RestaurantSettings";
+import RestaurantsGrid from "./pages/RestaurantsGrid";
 import Terms from "./pages/Terms";
 import AdminDashboard from "./pages/AdminDashboard";
 import PricingPage from "./pages/PricingPage";
@@ -73,11 +74,13 @@ const App = () => {
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/dashboard/overview" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/dashboard/menu" element={<ProtectedRoute><MenuManagement /></ProtectedRoute>} />
+                  <Route path="/dashboard/tables" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/dashboard/qr" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/dashboard/embed" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/dashboard/ai-import" element={<ProtectedRoute><AIMenuImport /></ProtectedRoute>} />
                   <Route path="/dashboard/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
                   <Route path="/dashboard/settings" element={<ProtectedRoute><RestaurantSettings /></ProtectedRoute>} />
+                  <Route path="/dashboard/restaurants" element={<ProtectedRoute><RestaurantsGrid /></ProtectedRoute>} />
                   <Route path="/dashboard/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
                   <Route path="/dashboard/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                   <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
@@ -93,11 +96,12 @@ const App = () => {
                   <Route path="/admin/whatsapp" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                   
                   {/* Public Menu Routes */}
-                  <Route path="/menu/:restaurantSlug/:tableId/group/:groupSlug" element={<PublicMenu />} />
-                  <Route path="/menu/:restaurantSlug/:tableId/select" element={<MenuGroupSelect />} />
-                  <Route path="/menu/:restaurantSlug/:tableId" element={<MenuGroupSelect />} />
-                  <Route path="/user/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
+                  <Route path="/menu/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
                   <Route path="/embed/:restaurantSlug" element={<EmbedMenu />} />
+                  
+                  {/* Legacy Routes for backward compatibility */}
+                  <Route path="/public-menu/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
+                  <Route path="/user/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
                   
                   {/* Development/Testing Route */}
                   <Route path="/seed" element={<SeedPage />} />

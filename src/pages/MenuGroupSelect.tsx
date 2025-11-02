@@ -53,9 +53,9 @@ const MenuGroupSelect = () => {
       if (restaurantError) throw restaurantError;
       setRestaurant(restaurantData);
 
-      // Get selected group slugs from URL query parameter
+      // Get selected group IDs from URL query parameter
       const groupsParam = searchParams.get("groups");
-      const selectedGroupSlugs = groupsParam ? groupsParam.split(',') : [];
+      const selectedGroupIds = groupsParam ? groupsParam.split(',') : [];
 
       // Load menu groups
       let query = supabase
@@ -69,11 +69,11 @@ const MenuGroupSelect = () => {
 
       if (groupsError) throw groupsError;
       
-      // Filter by selected group slugs if specified
+      // Filter by selected group IDs if specified
       let filteredGroups = allGroupsData || [];
-      if (selectedGroupSlugs.length > 0) {
+      if (selectedGroupIds.length > 0) {
         filteredGroups = filteredGroups.filter((g: any) => 
-          selectedGroupSlugs.includes(g.slug)
+          selectedGroupIds.includes(g.id)
         );
       }
       
@@ -87,9 +87,8 @@ const MenuGroupSelect = () => {
   };
 
   const handleGroupSelect = (group: MenuGroup) => {
-    // Navigate to single group URL: /menu/:restaurantSlug/:tableId/group/:groupSlug
-    const groupSlug = (group as any).slug || 'menu';
-    navigate(`/menu/${restaurantSlug}/${tableId}/group/${groupSlug}`);
+    // Navigate to public menu with selected group
+    navigate(`/public-menu/${restaurantSlug}/${tableId}?group=${group.id}`);
   };
 
   const getBackgroundStyle = () => {

@@ -161,7 +161,9 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Please review the extracted data carefully. You can edit item names, descriptions, prices, or delete incorrect items before importing.
+          <strong>📝 Review Before Import:</strong> Edit item names, descriptions, prices, or delete incorrect items.
+          <br />
+          <strong className="text-purple-600">🎨 Optional:</strong> Generate AI food images below for a professional menu appearance!
         </AlertDescription>
       </Alert>
 
@@ -189,18 +191,17 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                     {category.items.length} items
                   </Badge>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleCategoryDelete(categoryIndex);
+                    if (!isImporting) handleCategoryDelete(categoryIndex);
                   }}
-                  className="text-red-500 hover:text-red-700"
-                  disabled={isImporting}
+                  className={`p-2 rounded hover:bg-gray-100 cursor-pointer ${
+                    isImporting ? 'opacity-50 cursor-not-allowed' : 'text-red-500 hover:text-red-700'
+                  }`}
                 >
                   <Trash2 className="w-4 h-4" />
-                </Button>
+                </div>
               </div>
             </AccordionTrigger>
 
@@ -209,6 +210,7 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[100px]">Image</TableHead>
                       <TableHead>Item Name</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Price (RWF)</TableHead>
@@ -223,6 +225,19 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
 
                       return (
                         <TableRow key={itemIndex}>
+                          <TableCell>
+                            {item.image_url ? (
+                              <img 
+                                src={item.image_url} 
+                                alt={item.name}
+                                className="w-16 h-16 object-cover rounded-lg border"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                                No image
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell>
                             {isEditing ? (
                               <Input
@@ -333,8 +348,8 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
         ))}
       </Accordion>
 
-      {/* Optional Image Generation - Disabled (requires Hugging Face API key) */}
-      {false && !isGeneratingImages && (
+      {/* AI Image Generation */}
+      {!isGeneratingImages && (
         <Card className="p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
           <div className="flex items-center justify-between">
             <div className="flex items-start space-x-3">
@@ -342,23 +357,40 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                 <ImageIcon className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900">Generate AI Images</h4>
+                <h4 className="font-semibold text-gray-900">🎨 Generate AI Images</h4>
                 <p className="text-sm text-gray-600">
-                  Create professional food photos for all items using AI (requires API setup)
+                  Create professional food photos for all {totalItems} items using AI Stable Diffusion XL
+                </p>
+                <p className="text-xs text-purple-600 mt-1">
+                  ✨ Free AI • Takes ~{Math.ceil(totalItems * 3 / 60)} min ({totalItems} items × 3s)
                 </p>
               </div>
             </div>
             <Button
               variant="outline"
-              disabled={true}
+              onClick={handleGenerateImages}
+              disabled={isImporting}
               className="border-purple-300 hover:bg-purple-100"
             >
               <ImageIcon className="w-4 h-4 mr-2" />
-              Generate {totalItems} Images
+              Generate Images
             </Button>
           </div>
         </Card>
       )}
+      
+      {/* Upload Images Manually Note */}
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <div className="flex items-start space-x-3">
+          <ImageIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-blue-900">💡 Optional: Add Images Manually</p>
+            <p className="text-sm text-blue-800 mt-1">
+              Or upload your own food photos later by editing each menu item in Menu Management.
+            </p>
+          </div>
+        </div>
+      </Card>
 
       {/* Image Generation Progress */}
       {isGeneratingImages && (

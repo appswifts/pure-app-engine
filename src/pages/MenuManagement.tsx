@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { RestaurantSidebar } from "@/components/RestaurantSidebar";
+import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -18,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Plus, Edit2, Trash2, UtensilsCrossed, Eye, EyeOff, AlertCircle, ChefHat, Layers, Coffee, Settings, Globe, Store } from "lucide-react";
 import MenuGroupManager from "@/components/dashboard/MenuGroupManager";
 import { MenuHierarchyGuide } from "@/components/dashboard/MenuHierarchyGuide";
-import RestaurantAccordion from "@/components/dashboard/RestaurantAccordion";
+import { useRestaurant } from "@/hooks/useRestaurant";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
@@ -34,6 +33,7 @@ type MenuItem = Tables<"menu_items"> & {
 
 const MenuManagement = () => {
   const { user, isAuthenticated } = useAuth();
+  const { restaurantId, loading: restaurantLoading } = useRestaurant();
   const [currentRestaurant, setCurrentRestaurant] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -48,16 +48,52 @@ const MenuManagement = () => {
   const [editingAccompaniment, setEditingAccompaniment] = useState<Accompaniment | null>(null);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  
+  // Form state
+  const [itemForm, setItemForm] = useState({
+    name: "",
+    description: "",
+    price: "",
+    category_id: "",
+    image_url: "",
+    is_available: true,
+    is_accompaniment: false,
+    variations: [] as any[],
+    selectedAccompaniments: [] as string[]
+  });
+  
+  const [categoryForm, setCategoryForm] = useState({
+    name: "",
+    description: "",
+    is_active: true,
+    display_order: 0
+  });
+  
+  const [accompanimentForm, setAccompanimentForm] = useState({
+    name: "",
+    price: "",
+    is_required: false
+  });
+  
   const { toast } = useToast();
 
-  // Load initial restaurant - only once
   useEffect(() => {
-    if (isAuthenticated && user && !currentRestaurant) {
-      loadInitialRestaurant();
+    if (restaurantId) {
+      loadRestaurantData();
+    } else {
+      setDataLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [restaurantId]);
 
-  const loadInitialRestaurant = async () => {
+  useEffect(() => {
+    if (currentRestaurant) {
+      fetchCategories();
+      fetchItems();
+      fetchAccompaniments();
+    }
+  }, [currentRestaurant, selectedMenuGroupId]);
+
+  const loadRestaurantData = async () => {
     try {
       if (!user?.id) return;
       
@@ -78,50 +114,15 @@ const MenuManagement = () => {
         setCurrentRestaurant(data);
       }
       setDataLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading restaurant:", error);
-      setDataLoading(false);
+      toast({
+        title: "Error loading restaurant",
+        description: error.message || "Failed to load restaurant",
+        variant: "destructive",
+      });
     }
   };
-
-  const handleRestaurantChange = (restaurant: any) => {
-    setCurrentRestaurant(restaurant);
-    // Reset selections when switching restaurants
-    setSelectedMenuGroupId(null);
-    setSelectedCategory("all");
-  };
-
-  const [itemForm, setItemForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    category_id: "",
-    image_url: "",
-    is_available: true,
-    is_accompaniment: false,
-    variations: [] as { name: string; description: string; price_adjustment: string; is_available: boolean }[],
-    selectedAccompaniments: [] as string[]
-  });
-
-  const [categoryForm, setCategoryForm] = useState({
-    name: "",
-    description: "",
-    is_active: true,
-    display_order: 0
-  });
-
-  const [accompanimentForm, setAccompanimentForm] = useState({
-    name: "",
-    price: ""
-  });
-
-  useEffect(() => {
-    if (currentRestaurant) {
-      fetchCategories();
-      fetchItems();
-      fetchAccompaniments();
-    }
-  }, [currentRestaurant, selectedMenuGroupId]);
 
   const fetchCategories = async () => {
     try {
@@ -581,19 +582,12 @@ const MenuManagement = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <RestaurantSidebar />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold">Menu Management</h1>
-              <p className="text-sm text-muted-foreground">Manage your restaurant menu</p>
-            </div>
-          </header>
-
-          <div className="flex-1 space-y-6 p-6">
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Menu Management</h1>
+          <p className="text-muted-foreground">Manage your restaurant menu</p>
+        </div>
             {dataLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -601,30 +595,41 @@ const MenuManagement = () => {
               </div>
             ) : (
               <>
-                {/* Restaurant Selector */}
-                {user && (
-                  <>
-                    <RestaurantAccordion
-                      currentRestaurant={currentRestaurant}
-                      onRestaurantChange={handleRestaurantChange}
-                      userId={user.id}
-                    />
-                    <Separator className="my-6" />
-                  </>
-                )}
-
                 {!currentRestaurant ? (
                   <Card>
                     <CardContent className="py-12 text-center">
                       <Store className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">Select a Restaurant</h3>
-                      <p className="text-muted-foreground">
-                        Please select or create a restaurant above to manage its menu
+                      <h3 className="text-lg font-semibold mb-2">No Restaurant Selected</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Please select a restaurant from the grid to manage its menu
                       </p>
+                      <Button onClick={() => window.location.href = '/dashboard/restaurants'}>
+                        <Store className="h-4 w-4 mr-2" />
+                        Go to My Restaurants
+                      </Button>
                     </CardContent>
                   </Card>
                 ) : (
-                  <>
+                  <div className="space-y-6">
+                    {/* Restaurant Info Banner */}
+                    <Card className="bg-primary/5 border-primary/20">
+                      <CardContent className="py-4">
+                        <div className="flex items-center gap-3">
+                          {currentRestaurant.logo_url ? (
+                            <img src={currentRestaurant.logo_url} alt={currentRestaurant.name} className="h-12 w-12 rounded-full object-cover" />
+                          ) : (
+                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Store className="h-6 w-6 text-primary" />
+                            </div>
+                          )}
+                          <div>
+                            <h2 className="text-xl font-bold">{currentRestaurant.name}</h2>
+                            <p className="text-sm text-muted-foreground">/{currentRestaurant.slug}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     {/* Menu Groups Management */}
                     <MenuGroupManager
                       restaurantId={currentRestaurant.id}
@@ -1066,14 +1071,12 @@ const MenuManagement = () => {
                  </CardContent>
                </Card>
                     )}
-                  </>
+                  </div>
                 )}
               </>
             )}
-          </div>
-        </SidebarInset>
       </div>
-    </SidebarProvider>
+    </DashboardLayout>
   );
 };
 

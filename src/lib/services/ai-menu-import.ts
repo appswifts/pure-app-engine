@@ -913,6 +913,7 @@ export const generateFoodImage = async (
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer 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',
         },
         body: JSON.stringify({
           inputs: prompt,

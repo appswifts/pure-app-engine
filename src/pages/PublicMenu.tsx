@@ -153,10 +153,17 @@ const PublicMenu = () => {
   useEffect(() => {
     if (restaurantSlug) {
       // Check URL parameters for display mode
-      // New pattern: /menu/:restaurantSlug/:tableId/group/:groupSlug
-      if (groupSlug) {
+      const modeParam = searchParams.get('mode');
+      const groupParam = searchParams.get('group');
+      
+      if (modeParam === 'full') {
+        setDisplayMode('full');
+      } else if (groupSlug) {
+        // New pattern: /menu/:restaurantSlug/:tableId/group/:groupSlug
         setDisplayMode('single');
-        // Will load group by slug in loadMenuData
+      } else if (groupParam) {
+        // QR code pattern with group query parameter
+        setDisplayMode('single');
       } else {
         setDisplayMode('default');
       }
@@ -226,89 +233,87 @@ const PublicMenu = () => {
       
       const restaurantData = accessResult.restaurant;
 
-      // Load menu groups
-      const { data: menuGroupsData, error: menuGroupsError } = await supabase
-        .from("menu_groups")
-        .select("*")
-        .eq("restaurant_id", restaurantData.id)
-        .eq("is_active", true)
-        .order("display_order");
-
-      if (menuGroupsError) throw menuGroupsError;
-      setMenuGroups(menuGroupsData || []);
-      
-      // Auto-select based on display mode
-      if (groupSlug) {
-        // Single group mode - find group by slug
-        const group = menuGroupsData?.find((g: any) => g.slug === groupSlug);
-        if (group) {
-          setSelectedMenuGroup(group.id);
-        } else if (menuGroupsData && menuGroupsData.length > 0) {
-          // Fallback to first group if slug not found
-          setSelectedMenuGroup(menuGroupsData[0].id);
-        }
-      } else if (menuGroupsData && menuGroupsData.length > 0) {
-        // Default mode - auto-select first group
-        setSelectedMenuGroup(menuGroupsData[0].id);
-      }
-
-      // Load table name if tableSlug or tableId exists
-      const tableIdentifier = tableId || tableSlug;
-      if (tableIdentifier) {
-        const { data: tableData, error: tableError } = await supabase
-          .from("tables")
-          .select("name")
-          .eq("slug", tableIdentifier)
+      // Parallel data loading for faster performance
+      const [menuGroupsResult, tableResult] = await Promise.all([
+        supabase
+          .from("menu_groups")
+          .select("id, name, slug, display_order")
           .eq("restaurant_id", restaurantData.id)
-          .single();
-        
-        if (!tableError && tableData) {
-          setTableName(tableData.name);
-        }
+          .eq("is_active", true)
+          .order("display_order"),
+        tableId || tableSlug
+          ? supabase
+              .from("tables")
+              .select("name")
+              .eq("slug", tableId || tableSlug)
+              .eq("restaurant_id", restaurantData.id)
+              .single()
+          : null
+      ]);
+
+      const menuGroupsData = menuGroupsResult.data;
+      if (menuGroupsResult.error) throw menuGroupsResult.error;
+      setMenuGroups(menuGroupsData || []);
+
+      // Set table name if found
+      if (tableResult && !tableResult.error && tableResult.data) {
+        setTableName(tableResult.data.name);
       }
-
-      // Load categories
-      let categoriesQuery = supabase
-        .from("categories")
-        .select("*")
-        .eq("restaurant_id", restaurantData.id);
-
-      // Filter by selected menu group if available
-      if (selectedMenuGroup) {
-        categoriesQuery = categoriesQuery.eq("menu_group_id", selectedMenuGroup);
+      
+      // Check for group query parameter first, otherwise auto-select first group
+      let selectedGroup = null;
+      const groupParam = searchParams.get('group');
+      
+      if (groupParam && menuGroupsData) {
+        // Try to find group by name from query parameter
+        const group = menuGroupsData.find(g => 
+          g.name.toLowerCase() === groupParam.toLowerCase() || 
+          g.slug === groupParam ||
+          g.id === groupParam
+        );
+        selectedGroup = group ? group.id : (menuGroupsData[0]?.id || null);
+      } else if (menuGroupsData && menuGroupsData.length > 0) {
+        // Default: auto-select first group
+        selectedGroup = menuGroupsData[0].id;
       }
+      setSelectedMenuGroup(selectedGroup);
 
-      const { data: categoriesData, error: categoriesError } = await categoriesQuery.order("display_order");
+      // Load all categories and items (filter by group only if groups exist)
+      const [categoriesResult, itemsResult] = await Promise.all([
+        supabase
+          .from("categories")
+          .select("id, name, menu_group_id, display_order")
+          .eq("restaurant_id", restaurantData.id)
+          .order("display_order"),
+        supabase
+          .from("menu_items")
+          .select("id, name, description, base_price, category_id, image_url, display_order")
+          .eq("restaurant_id", restaurantData.id)
+          .eq("is_available", true)
+          .order("display_order")
+      ]);
 
-      if (categoriesError) throw categoriesError;
-      setCategories(categoriesData || []);
+      if (categoriesResult.error) throw categoriesResult.error;
+      if (itemsResult.error) throw itemsResult.error;
+      
+      setCategories(categoriesResult.data || []);
+      setMenuItems(itemsResult.data || []);
 
-      // Load menu items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from("menu_items")
-        .select("*")
-        .eq("restaurant_id", restaurantData.id)
-        .eq("is_available", true)
-        .order("display_order");
+      // Load variations and accompaniments in parallel
+      const [variationsResult, accompanimentsResult] = await Promise.all([
+        supabase
+          .from("item_variations")
+          .select("id, menu_item_id, name, price_modifier"),
+        supabase
+          .from("accompaniments")
+          .select("id, menu_item_id, name, price, is_required")
+      ]);
 
-      if (itemsError) throw itemsError;
-      setMenuItems(itemsData || []);
-
-      // Load variations
-      const { data: variationsData, error: variationsError } = await supabase
-        .from("item_variations")
-        .select("*");
-
-      if (variationsError) throw variationsError;
-      setVariations(variationsData || []);
-
-      // Load accompaniments
-      const { data: accompanimentsData, error: accompanimentsError } = await supabase
-        .from("accompaniments")
-        .select("*");
-
-      if (accompanimentsError) throw accompanimentsError;
-      setAccompaniments(accompanimentsData || []);
+      if (variationsResult.error) throw variationsResult.error;
+      if (accompanimentsResult.error) throw accompanimentsResult.error;
+      
+      setVariations(variationsResult.data || []);
+      setAccompaniments(accompanimentsResult.data || []);
 
     } catch (error: any) {
       toast({
@@ -483,30 +488,39 @@ const PublicMenu = () => {
     return <RestrictedMenuView restaurant={restaurant} accessInfo={accessInfo} />;
   }
 
+  // Filter categories by selected group
+  const filteredCategories = categories.filter(category => {
+    if (!selectedMenuGroup || menuGroups.length === 0) {
+      return true; // Show all categories if no groups
+    }
+    const categoryGroupId = (category as any).menu_group_id;
+    return !categoryGroupId || categoryGroupId === selectedMenuGroup;
+  });
+
   // Filter items by menu group, category, and search query
   const filteredItems = menuItems.filter(item => {
-    // Filter by menu group
     const itemCategory = categories.find(c => c.id === item.category_id);
-    let menuGroupMatch = true;
     
-    if (displayMode === 'single' && selectedMenuGroup) {
-      // Single mode: only show items from selected group
-      menuGroupMatch = itemCategory && (itemCategory as any).menu_group_id === selectedMenuGroup;
-    } else if (displayMode === 'default' && selectedMenuGroup) {
-      // Default mode: show items from selected group
-      menuGroupMatch = itemCategory && (itemCategory as any).menu_group_id === selectedMenuGroup;
+    // Group filtering logic:
+    // - If no groups exist → show all items
+    // - If groups exist but item has no category → show it anyway
+    // - If groups exist and category has group → only show if matches selected group
+    let groupMatch = true;
+    if (menuGroups.length > 0 && selectedMenuGroup && itemCategory) {
+      const categoryGroupId = (itemCategory as any).menu_group_id;
+      // Show if category belongs to selected group OR if category has no group
+      groupMatch = !categoryGroupId || categoryGroupId === selectedMenuGroup;
     }
-    // Full mode: show all items (menuGroupMatch stays true)
     
     // Filter by category
     const categoryMatch = selectedCategory === null || item.category_id === selectedCategory;
     
     // Filter by search query
-    const searchMatch = searchQuery === "" || 
+    const searchMatch = !searchQuery || 
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    return menuGroupMatch && categoryMatch && searchMatch;
+    return groupMatch && categoryMatch && searchMatch;
   });
 
 
@@ -653,6 +667,22 @@ const PublicMenu = () => {
           >
             {restaurant.name}
           </h1>
+          
+          {/* Show preselected group indicator */}
+          {menuGroups.length > 0 && selectedMenuGroup && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className="text-sm text-white/70">Viewing:</span>
+              <div 
+                className="px-4 py-1.5 rounded-full text-sm font-medium"
+                style={{
+                  backgroundColor: restaurant.brand_color || '#F97316',
+                  color: '#FFFFFF'
+                }}
+              >
+                {menuGroups.find(g => g.id === selectedMenuGroup)?.name || 'Menu'}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Category Navigation with Search */}
@@ -675,7 +705,7 @@ const PublicMenu = () => {
                         >
                           All
                         </button>
-                        {categories.map((category) => {
+                        {filteredCategories.map((category) => {
                           const isActive = selectedCategory === category.id;
                           const style = isActive ? activeStyle : inactiveStyle;
                           

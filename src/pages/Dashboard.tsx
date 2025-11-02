@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChefHat, LogOut, Plus, QrCode, Settings, Menu as MenuIcon, Shield, BarChart3, Utensils, CreditCard, AlertTriangle, Clock, X, Wallet, Code, Sparkles, Grid3x3 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import MenuManager from "@/components/dashboard/MenuManager";
-import MenuQRGenerator from "@/components/dashboard/MenuQRGenerator";
+import SimpleMenuQRGenerator from "@/components/dashboard/SimpleMenuQRGenerator";
 import TableManager from "@/components/dashboard/TableManager";
 import EnhancedItemManager from "@/components/dashboard/EnhancedItemManager";
 import EmbedCodeGenerator from "@/components/dashboard/EmbedCodeGenerator";
@@ -19,7 +19,6 @@ import { simplePaymentAccessControl } from "@/services/simplePaymentAccessContro
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { RestaurantLoader } from "@/utils/restaurantLoader";
-import RestaurantSwitcher from "@/components/dashboard/RestaurantSwitcher";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import ErrorFallback from "@/components/ErrorFallback";
 import { RestaurantLoadingSkeleton, DashboardOverviewSkeleton } from "@/components/RestaurantLoadingSkeleton";
@@ -148,50 +147,50 @@ const Dashboard = () => {
   const sidebarItems = [
     {
       id: "overview",
-      label: "Overview",
-      icon: BarChart3,
+      label: "Dashboard",
+      materialIcon: "dashboard",
       description: "Dashboard overview and quick stats"
     },
     {
       id: "menu",
-      label: "Menu",
-      icon: Utensils,
+      label: "Menu Management",
+      materialIcon: "restaurant_menu",
       description: "Manage your menu items and categories"
     },
     {
       id: "ai-import",
       label: "AI Menu Import",
-      icon: Sparkles,
+      materialIcon: "smart_toy",
       description: "Import menu from images using AI"
     },
     {
       id: "tables",
       label: "Tables",
-      icon: Grid3x3,
+      materialIcon: "table_restaurant",
       description: "Manage restaurant tables"
     },
     {
       id: "qr",
-      label: "QR Codes",
-      icon: QrCode,
+      label: "QR Code Generator",
+      materialIcon: "qr_code_2",
       description: "Generate QR codes for tables"
     },
     {
       id: "embed",
-      label: "Embed Codes",
-      icon: Code,
+      label: "Embed Code",
+      materialIcon: "code",
       description: "Generate embed codes for websites"
     },
     {
       id: "subscription",
-      label: "Subscriptions",
-      icon: Wallet,
+      label: "Subscription",
+      materialIcon: "credit_card",
       description: "Manage subscription & payments"
     },
     {
       id: "settings",
       label: "Settings",
-      icon: Settings,
+      materialIcon: "settings",
       description: "Restaurant settings and preferences"
     }
   ];
@@ -213,59 +212,46 @@ const Dashboard = () => {
 
   return (
     <RestaurantErrorBoundary>
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
       {/* Mobile Header */}
-      <div className="lg:hidden bg-card/80 backdrop-blur-sm border-b p-4 flex items-center justify-between">
+      <div className="lg:hidden bg-background-light dark:bg-background-dark border-b border-primary-green/20 dark:border-primary-green/30 p-4 flex items-center justify-between sticky top-0 z-30">
         <BrandLogo size="responsive" restaurant={restaurant} />
         <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
           <MenuIcon className="h-5 w-5" />
         </Button>
       </div>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed inset-y-0 left-0 z-50 w-64 bg-card/80 backdrop-blur-sm border-r flex flex-col transition-transform duration-300 ease-in-out`}>
-          {/* Mobile Close Button */}
-          <div className="lg:hidden p-4 border-b flex justify-end">
-            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+      <div className="flex min-h-screen">
+        {/* Sidebar - Fixed/Sticky */}
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed inset-y-0 left-0 z-50 w-64 bg-background-light dark:bg-background-dark p-4 flex flex-col justify-between border-r border-primary-green/20 dark:border-primary-green/30 transition-transform duration-300 ease-in-out overflow-y-auto`}>
+          <div>
+            {/* Mobile Close Button */}
+            <div className="lg:hidden mb-4 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
 
-          {/* Sidebar Header */}
-          <div className="p-4 lg:p-6 border-b">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-center">
-                <BrandLogo size="responsive" restaurant={restaurant} />
-              </div>
-              {/* Restaurant Switcher */}
-              {user && (
-                <RestaurantSwitcher
-                  currentRestaurant={restaurant}
-                  onRestaurantChange={(newRestaurant) => {
-                    // Store the selected restaurant ID in localStorage
-                    localStorage.setItem('selectedRestaurantId', newRestaurant.id);
-                    setRestaurant(newRestaurant);
-                    // Reload the page to refresh all data for the new restaurant
-                    window.location.reload();
-                  }}
-                  userId={user.id}
-                />
-              )}
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Restaurant Dashboard</p>
+            {/* Profile Section */}
+            <div className="flex items-center gap-3 mb-8">
+              <div 
+                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 flex-shrink-0"
+                style={{backgroundImage: `url(${user?.user_metadata?.avatar_url || restaurant?.logo_url || 'https://via.placeholder.com/48'})`}}
+              />
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                  {user?.user_metadata?.full_name || restaurant?.name || 'Restaurant Owner'}
+                </h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Owner</p>
               </div>
             </div>
-          </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-2">
+            {/* Navigation */}
+            <nav className="flex flex-col gap-2">
               {sidebarItems.map((item) => {
-                const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
-                  <button
+                  <a
                     key={item.id}
                     onClick={() => {
                       // Navigate to appropriate URL based on item id
@@ -282,55 +268,44 @@ const Dashboard = () => {
                       navigate(urlMap[item.id] || '/dashboard/overview');
                       setSidebarOpen(false); // Close sidebar on mobile after selection
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all hover:bg-accent/50 ${
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer ${
                       isActive 
-                        ? 'bg-primary text-primary-foreground shadow-sm' 
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-primary-green/20 dark:bg-primary-green/30 text-gray-900 dark:text-white font-medium' 
+                        : 'hover:bg-primary-green/10 dark:hover:bg-primary-green/20 text-gray-700 dark:text-gray-300'
                     }`}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{item.label}</div>
-                      <div className={`text-xs truncate ${
-                        isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                      }`}>
-                        {item.description}
-                      </div>
-                    </div>
-                  </button>
+                    <span className="material-symbols-outlined">{item.materialIcon}</span>
+                    <span>{item.label}</span>
+                  </a>
                 );
               })}
-            </div>
-          </nav>
+            </nav>
+          </div>
 
           {/* Sidebar Footer */}
-          <div className="p-4 border-t space-y-2">
+          <div className="flex flex-col gap-2">
             {isAdmin && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="w-full justify-start"
+              <a
                 onClick={() => {
                   navigate("/admin");
                   setSidebarOpen(false);
                 }}
+                className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-primary-green/10 dark:hover:bg-primary-green/20 cursor-pointer text-gray-700 dark:text-gray-300"
               >
-                <Shield className="h-4 w-4 mr-2" />
-                <span>Admin</span>
-              </Button>
+                <span className="material-symbols-outlined">shield</span>
+                <span>Admin Panel</span>
+              </a>
             )}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full justify-start"
+            <a
               onClick={() => {
                 handleSignOut();
                 setSidebarOpen(false);
               }}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-primary-green/10 dark:hover:bg-primary-green/20 cursor-pointer text-gray-700 dark:text-gray-300"
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <span className="material-symbols-outlined">logout</span>
               <span>Sign Out</span>
-            </Button>
+            </a>
           </div>
         </aside>
 
@@ -342,8 +317,8 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto lg:ml-64">
+        {/* Main Content - Offset for Sidebar */}
+        <main className="flex-1 min-h-screen overflow-auto lg:ml-64 w-full">
           <div className="p-4 lg:p-8">
           {activeTab === "overview" && (
             <div className="space-y-6">
@@ -492,7 +467,7 @@ const Dashboard = () => {
           {activeTab === "qr" && (
             <div className="space-y-6">
               {user && (
-                <MenuQRGenerator />
+                <SimpleMenuQRGenerator />
               )}
             </div>
           )}
