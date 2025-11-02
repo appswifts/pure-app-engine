@@ -439,27 +439,15 @@ const Auth = () => {
           </Button>
           
           {!isAdminMode && (
-            <>
-              <div>
-                <Button
-                  variant="link"
-                  onClick={() => navigate("/restaurant-signup")}
-                  className="text-primary flex items-center gap-2 mx-auto"
-                >
-                  <Store className="h-4 w-4" />
-                  Restaurant Signup with Plan Selection
-                </Button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Admin? <Button 
-                  variant="link" 
-                  onClick={() => navigate("/auth?mode=admin")}
-                  className="text-xs p-0 h-auto"
-                >
-                  Sign in here
-                </Button>
-              </div>
-            </>
+            <div className="text-xs text-muted-foreground">
+              Admin? <Button 
+                variant="link" 
+                onClick={() => navigate("/auth?mode=admin")}
+                className="text-xs p-0 h-auto"
+              >
+                Sign in here
+              </Button>
+            </div>
           )}
         </div>
       </div>

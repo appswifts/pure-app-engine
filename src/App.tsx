@@ -13,7 +13,6 @@ import { errorService } from "@/services/errorService";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PasswordReset from "./pages/PasswordReset";
-import SignupFlow from "./pages/SignupFlow";
 import Dashboard from "./pages/Dashboard";
 import PublicMenu from "./pages/PublicMenu";
 import MenuGroupSelect from "./pages/MenuGroupSelect";
@@ -24,7 +23,6 @@ import PricingPage from "./pages/PricingPage";
 import Payment from "./pages/Payment";
 import SeedPage from "./pages/SeedPage";
 import Subscription from "./pages/Subscription";
-import RestaurantSignupFlow from "./pages/RestaurantSignupFlow";
 import NotFound from "./pages/NotFound";
 import EmbedMenu from "./components/EmbedMenu";
 import AIMenuImport from "./pages/AIMenuImport";
@@ -65,11 +63,11 @@ const App = () => {
                   {/* Auth Routes - unified authentication */}
                   <Route path="/auth" element={<ProtectedRoute requireAuth={false}><Auth /></ProtectedRoute>} />
                   <Route path="/password-reset" element={<ProtectedRoute requireAuth={false}><PasswordReset /></ProtectedRoute>} />
-                  <Route path="/signup-flow" element={<ProtectedRoute requireAuth={false}><SignupFlow /></ProtectedRoute>} />
-                  <Route path="/restaurant-signup" element={<ProtectedRoute requireAuth={false}><RestaurantSignupFlow /></ProtectedRoute>} />
                   
-                  {/* Legacy route redirects */}
+                  {/* Legacy route redirects for backward compatibility */}
                   <Route path="/admin/login" element={<Auth />} />
+                  <Route path="/signup-flow" element={<Auth />} />
+                  <Route path="/restaurant-signup" element={<Auth />} />
                   
                   {/* Protected Dashboard Routes */}
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
