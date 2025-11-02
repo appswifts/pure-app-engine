@@ -316,19 +316,45 @@ export default function AIMenuImport() {
 
         // Check if we should use smart matching
         if (selectedCategory === '__auto__' || !selectedCategory) {
-          // Try to find matching category using fuzzy matching
+          // Try to find matching category with improved fuzzy matching
           const existingCategories = categories;
-          const categoryMatch = existingCategories.find(
-            cat => cat.name.toLowerCase() === category.name.toLowerCase()
+          
+          // Normalize category name for matching
+          const normalizedName = category.name.toLowerCase().trim();
+          
+          // Try exact match first
+          let categoryMatch = existingCategories.find(
+            cat => cat.name.toLowerCase().trim() === normalizedName
           );
+          
+          // If no exact match, try fuzzy matching (handle plurals, variations)
+          if (!categoryMatch) {
+            categoryMatch = existingCategories.find(cat => {
+              const existingNormalized = cat.name.toLowerCase().trim();
+              
+              // Remove trailing 's' to handle plural/singular
+              const singularNew = normalizedName.replace(/s$/, '');
+              const singularExisting = existingNormalized.replace(/s$/, '');
+              
+              // Match if singular forms are the same
+              if (singularNew === singularExisting) return true;
+              
+              // Match if one contains the other (e.g., "Main Dishes" vs "Main")
+              if (existingNormalized.includes(normalizedName) || normalizedName.includes(existingNormalized)) {
+                return Math.abs(existingNormalized.length - normalizedName.length) < 5;
+              }
+              
+              return false;
+            });
+          }
 
           if (categoryMatch) {
             categoryId = categoryMatch.id;
             matchedCategories++;
-            console.log(`✓ Matched category: ${category.name} → ${categoryMatch.name}`);
+            console.log(`✓ Matched category: "${category.name}" → "${categoryMatch.name}"`);
           }
         } else {
-          // User manually selected a category
+          // User manually selected a category - use it for ALL items
           categoryId = selectedCategory;
         }
 
