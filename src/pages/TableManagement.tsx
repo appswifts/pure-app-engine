@@ -14,7 +14,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Plus, QrCode, Edit2, Trash2, Download, Eye, EyeOff, AlertCircle } from "lucide-react";
 import QRCode from "qrcode";
 import { useDynamicDomain } from "@/hooks/useDynamicDomain";
-import { QRCodeUpdater } from "@/components/QRCodeUpdater";
 
 interface RestaurantTable {
   id: string;
@@ -295,7 +294,6 @@ const TableManagement = () => {
           </header>
 
           <div className="flex-1 space-y-6 p-6">
-            <QRCodeUpdater />
             
             {dataLoading ? (
               <div className="text-center py-8">

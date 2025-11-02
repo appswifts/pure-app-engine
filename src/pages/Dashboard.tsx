@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { ChefHat, LogOut, Plus, QrCode, Settings, Menu as MenuIcon, Shield, BarChart3, Utensils, CreditCard, AlertTriangle, Clock, X, Wallet, Code, Sparkles, Grid3x3 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import MenuManager from "@/components/dashboard/MenuManager";
-import QRGenerator from "@/components/dashboard/QRGenerator";
 import MenuQRGenerator from "@/components/dashboard/MenuQRGenerator";
 import TableManager from "@/components/dashboard/TableManager";
 import EnhancedItemManager from "@/components/dashboard/EnhancedItemManager";
