@@ -108,7 +108,7 @@ const AdminRestaurantManager: React.FC = () => {
       // Build query with pagination
       let query = supabase
         .from('restaurants')
-        .select('id, name, email, phone, whatsapp_number, slug, subscription_status, created_at, user_id', { count: 'exact' })
+        .select('id, name, email, phone, whatsapp_number, slug, subscription_status, created_at, user_id, notes', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
       

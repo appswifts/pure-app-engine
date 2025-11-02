@@ -397,7 +397,7 @@ const MenuQRGenerator = () => {
           .map(g => g.name);
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("saved_qr_codes")
         .insert({
           restaurant_id: restaurantId,
@@ -437,7 +437,7 @@ const MenuQRGenerator = () => {
     if (!restaurantId) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("saved_qr_codes")
         .select("*")
         .eq("restaurant_id", restaurantId)
@@ -456,7 +456,7 @@ const MenuQRGenerator = () => {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("saved_qr_codes")
         .delete()
         .eq("id", qrId);
