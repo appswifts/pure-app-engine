@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -129,10 +129,12 @@ const LoadingSpinner = () => (
 );
 
 const PublicMenu = () => {
-  const { restaurantSlug, tableSlug } = useParams();
+  const { restaurantSlug, tableSlug, tableId, groupSlug } = useParams();
+  const [searchParams] = useSearchParams();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuGroups, setMenuGroups] = useState<MenuGroup[]>([]);
   const [selectedMenuGroup, setSelectedMenuGroup] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<'single' | 'full' | 'default'>('default');
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [variations, setVariations] = useState<ItemVariation[]>([]);
@@ -150,9 +152,18 @@ const PublicMenu = () => {
   
   useEffect(() => {
     if (restaurantSlug) {
+      // Check URL parameters for display mode
+      // New pattern: /menu/:restaurantSlug/:tableId/group/:groupSlug
+      if (groupSlug) {
+        setDisplayMode('single');
+        // Will load group by slug in loadMenuData
+      } else {
+        setDisplayMode('default');
+      }
+      
       loadMenuData();
     }
-  }, [restaurantSlug]);
+  }, [restaurantSlug, tableId, tableSlug, groupSlug, searchParams]);
 
   useEffect(() => {
     if (restaurant && selectedMenuGroup) {
@@ -226,17 +237,28 @@ const PublicMenu = () => {
       if (menuGroupsError) throw menuGroupsError;
       setMenuGroups(menuGroupsData || []);
       
-      // Auto-select first menu group if exists
-      if (menuGroupsData && menuGroupsData.length > 0) {
+      // Auto-select based on display mode
+      if (groupSlug) {
+        // Single group mode - find group by slug
+        const group = menuGroupsData?.find((g: any) => g.slug === groupSlug);
+        if (group) {
+          setSelectedMenuGroup(group.id);
+        } else if (menuGroupsData && menuGroupsData.length > 0) {
+          // Fallback to first group if slug not found
+          setSelectedMenuGroup(menuGroupsData[0].id);
+        }
+      } else if (menuGroupsData && menuGroupsData.length > 0) {
+        // Default mode - auto-select first group
         setSelectedMenuGroup(menuGroupsData[0].id);
       }
 
-      // Load table name if tableSlug exists
-      if (tableSlug) {
+      // Load table name if tableSlug or tableId exists
+      const tableIdentifier = tableId || tableSlug;
+      if (tableIdentifier) {
         const { data: tableData, error: tableError } = await supabase
           .from("tables")
           .select("name")
-          .eq("slug", tableSlug)
+          .eq("slug", tableIdentifier)
           .eq("restaurant_id", restaurantData.id)
           .single();
         
@@ -463,10 +485,18 @@ const PublicMenu = () => {
 
   // Filter items by menu group, category, and search query
   const filteredItems = menuItems.filter(item => {
-    // Filter by menu group - only show items whose categories belong to selected menu group
+    // Filter by menu group
     const itemCategory = categories.find(c => c.id === item.category_id);
-    const menuGroupMatch = !selectedMenuGroup || 
-      (itemCategory && (itemCategory as any).menu_group_id === selectedMenuGroup);
+    let menuGroupMatch = true;
+    
+    if (displayMode === 'single' && selectedMenuGroup) {
+      // Single mode: only show items from selected group
+      menuGroupMatch = itemCategory && (itemCategory as any).menu_group_id === selectedMenuGroup;
+    } else if (displayMode === 'default' && selectedMenuGroup) {
+      // Default mode: show items from selected group
+      menuGroupMatch = itemCategory && (itemCategory as any).menu_group_id === selectedMenuGroup;
+    }
+    // Full mode: show all items (menuGroupMatch stays true)
     
     // Filter by category
     const categoryMatch = selectedCategory === null || item.category_id === selectedCategory;
@@ -624,49 +654,6 @@ const PublicMenu = () => {
             {restaurant.name}
           </h1>
         </div>
-
-        {/* Menu Group Tabs (Cuisines) */}
-        {menuGroups.length > 0 && (
-          <div className="px-4 mb-6">
-            <div className="max-w-md mx-auto">
-              {menuGroups.length > 1 && (
-                <h2 className="text-center text-sm font-semibold mb-3 uppercase tracking-wider opacity-90" style={{ color: restaurant.text_color || '#FFFFFF' }}>
-                  🍽️ Choose Your Cuisine
-                </h2>
-              )}
-              <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
-                {menuGroups.map((group) => {
-                  const isActive = selectedMenuGroup === group.id;
-                  const activeStyle = getButtonStyle(true);
-                  const inactiveStyle = getButtonStyle(false);
-                  const style = isActive ? activeStyle : inactiveStyle;
-                  
-                  return (
-                    <button
-                      key={group.id}
-                      onClick={() => {
-                        setSelectedMenuGroup(group.id);
-                        setSelectedCategory(null); // Reset category when switching menu group
-                      }}
-                      className={`${style.className} flex-shrink-0 relative`}
-                      style={style.style}
-                    >
-                      {group.name}
-                      {group.description && (
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedMenuGroup && menuGroups.find(g => g.id === selectedMenuGroup)?.description && (
-                <p className="text-center text-sm mt-2 text-white/80">
-                  {menuGroups.find(g => g.id === selectedMenuGroup)?.description}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Category Navigation with Search */}
         <div className="px-4 mb-8">

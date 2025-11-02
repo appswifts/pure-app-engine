@@ -16,6 +16,7 @@ import PasswordReset from "./pages/PasswordReset";
 import SignupFlow from "./pages/SignupFlow";
 import Dashboard from "./pages/Dashboard";
 import PublicMenu from "./pages/PublicMenu";
+import MenuGroupSelect from "./pages/MenuGroupSelect";
 import RestaurantSettings from "./pages/RestaurantSettings";
 import Terms from "./pages/Terms";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -94,7 +95,9 @@ const App = () => {
                   <Route path="/admin/whatsapp" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
                   
                   {/* Public Menu Routes */}
-                  <Route path="/menu/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
+                  <Route path="/menu/:restaurantSlug/:tableId/group/:groupSlug" element={<PublicMenu />} />
+                  <Route path="/menu/:restaurantSlug/:tableId/select" element={<MenuGroupSelect />} />
+                  <Route path="/menu/:restaurantSlug/:tableId" element={<MenuGroupSelect />} />
                   <Route path="/user/:restaurantSlug/:tableSlug" element={<PublicMenu />} />
                   <Route path="/embed/:restaurantSlug" element={<EmbedMenu />} />
                   

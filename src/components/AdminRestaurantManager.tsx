@@ -68,6 +68,12 @@ const AdminRestaurantManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [inactiveCount, setInactiveCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -80,20 +86,42 @@ const AdminRestaurantManager: React.FC = () => {
     notes: '',
   });
 
+  // Debounce search term
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1); // Reset to first page on search
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
   useEffect(() => {
     loadRestaurants();
-  }, []);
+    loadCounts();
+  }, [currentPage, debouncedSearchTerm]);
 
   const loadRestaurants = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Build query with pagination
+      let query = supabase
         .from('restaurants')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('id, name, email, phone, whatsapp_number, slug, subscription_status, created_at, user_id', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+      
+      // Add search filter if present
+      if (debouncedSearchTerm) {
+        query = query.or(`name.ilike.%${debouncedSearchTerm}%,email.ilike.%${debouncedSearchTerm}%,slug.ilike.%${debouncedSearchTerm}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
       setRestaurants(data || []);
+      setTotalCount(count || 0);
     } catch (error) {
       console.error('Error loading restaurants:', error);
       toast({
@@ -103,6 +131,27 @@ const AdminRestaurantManager: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCounts = async () => {
+    try {
+      // Get active count
+      const { count: activeC } = await supabase
+        .from('restaurants')
+        .select('*', { count: 'exact', head: true })
+        .eq('subscription_status', 'active');
+      
+      // Get inactive count
+      const { count: inactiveC } = await supabase
+        .from('restaurants')
+        .select('*', { count: 'exact', head: true })
+        .neq('subscription_status', 'active');
+      
+      setActiveCount(activeC || 0);
+      setInactiveCount(inactiveC || 0);
+    } catch (error) {
+      console.error('Error loading counts:', error);
     }
   };
 
@@ -290,10 +339,19 @@ const AdminRestaurantManager: React.FC = () => {
     setShowDeleteDialog(true);
   };
 
-  const filteredRestaurants = restaurants.filter(restaurant =>
-    restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    restaurant.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -393,7 +451,7 @@ const AdminRestaurantManager: React.FC = () => {
             <Store className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{restaurants.length}</div>
+            <div className="text-2xl font-bold">{activeCount + inactiveCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -402,9 +460,7 @@ const AdminRestaurantManager: React.FC = () => {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {restaurants.filter(r => r.subscription_status === 'active').length}
-            </div>
+            <div className="text-2xl font-bold">{activeCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -413,9 +469,7 @@ const AdminRestaurantManager: React.FC = () => {
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {restaurants.filter(r => r.subscription_status !== 'active').length}
-            </div>
+            <div className="text-2xl font-bold">{inactiveCount}</div>
           </CardContent>
         </Card>
       </div>
@@ -461,14 +515,14 @@ const AdminRestaurantManager: React.FC = () => {
                       Loading restaurants...
                     </TableCell>
                   </TableRow>
-                ) : filteredRestaurants.length === 0 ? (
+                ) : restaurants.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       No restaurants found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRestaurants.map((restaurant) => (
+                  restaurants.map((restaurant) => (
                     <TableRow key={restaurant.id}>
                       <TableCell>
                         <div>
@@ -538,6 +592,36 @@ const AdminRestaurantManager: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} restaurants
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

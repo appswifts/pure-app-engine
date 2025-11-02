@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { ChefHat, LogOut, Plus, QrCode, Settings, Menu as MenuIcon, Shield, BarChart3, Utensils, CreditCard, AlertTriangle, Clock, X, Wallet, Code, Sparkles } from "lucide-react";
+import { ChefHat, LogOut, Plus, QrCode, Settings, Menu as MenuIcon, Shield, BarChart3, Utensils, CreditCard, AlertTriangle, Clock, X, Wallet, Code, Sparkles, Grid3x3 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import MenuManager from "@/components/dashboard/MenuManager";
 import QRGenerator from "@/components/dashboard/QRGenerator";
+import MenuQRGenerator from "@/components/dashboard/MenuQRGenerator";
+import TableManager from "@/components/dashboard/TableManager";
 import EnhancedItemManager from "@/components/dashboard/EnhancedItemManager";
 import EmbedCodeGenerator from "@/components/dashboard/EmbedCodeGenerator";
 import PaymentStatusAlert from "@/components/PaymentStatusAlert";
@@ -46,6 +48,7 @@ const Dashboard = () => {
     if (path === '/dashboard' || path === '/dashboard/overview') return 'overview';
     if (path === '/dashboard/menu') return 'menu';
     if (path === '/dashboard/ai-import') return 'ai-import';
+    if (path === '/dashboard/tables') return 'tables';
     if (path === '/dashboard/qr') return 'qr';
     if (path === '/dashboard/embed') return 'embed';
     if (path === '/dashboard/subscription') return 'subscription';
@@ -163,8 +166,14 @@ const Dashboard = () => {
       description: "Import menu from images using AI"
     },
     {
+      id: "tables",
+      label: "Tables",
+      icon: Grid3x3,
+      description: "Manage restaurant tables"
+    },
+    {
       id: "qr",
-      label: "QR Scan",
+      label: "QR Codes",
       icon: QrCode,
       description: "Generate QR codes for tables"
     },
@@ -265,6 +274,7 @@ const Dashboard = () => {
                         'overview': '/dashboard/overview',
                         'menu': '/dashboard/menu',
                         'ai-import': '/dashboard/ai-import',
+                        'tables': '/dashboard/tables',
                         'qr': '/dashboard/qr',
                         'embed': '/dashboard/embed',
                         'subscription': '/dashboard/subscription',
@@ -472,14 +482,18 @@ const Dashboard = () => {
             </div>
           )}
 
+          {activeTab === "tables" && (
+            <div className="space-y-6">
+              {user && (
+                <TableManager />
+              )}
+            </div>
+          )}
+
           {activeTab === "qr" && (
             <div className="space-y-6">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">QR Scan Codes</h1>
-                <p className="text-muted-foreground">Generate and manage QR codes for your restaurant tables.</p>
-              </div>
               {user && (
-                <QRGenerator user={user} />
+                <MenuQRGenerator />
               )}
             </div>
           )}
