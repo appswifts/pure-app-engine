@@ -6,6 +6,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limiting map: user_id -> { count, resetTime }
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+// File type magic bytes for validation
+const MAGIC_BYTES: Record<string, number[][]> = {
+  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+  'image/png': [[0x89, 0x50, 0x4E, 0x47]],
+  'image/gif': [[0x47, 0x49, 0x46, 0x38]],
+  'image/webp': [[0x52, 0x49, 0x46, 0x46]],
+  'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
+};
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
 interface MenuItem {
   name: string;
   description?: string;
@@ -36,16 +53,110 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limiting: 5 requests per hour per user
+    const now = Date.now();
+    const userLimit = rateLimitMap.get(user.id);
+    
+    if (userLimit) {
+      if (now < userLimit.resetTime) {
+        if (userLimit.count >= 5) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Maximum 5 requests per hour.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        userLimit.count++;
+      } else {
+        rateLimitMap.set(user.id, { count: 1, resetTime: now + 3600000 }); // 1 hour
+      }
+    } else {
+      rateLimitMap.set(user.id, { count: 1, resetTime: now + 3600000 });
+    }
+
     const { image, fileType, model = 'google/gemini-2.5-flash', existingCategories = [] } = await req.json();
 
-    if (!image) {
+    // Validate input
+    if (!image || typeof image !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Image data is required' }),
+        JSON.stringify({ error: 'Invalid image data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Starting menu extraction with model: ${model}`);
+    if (!fileType || typeof fileType !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'File type is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate file type is allowed
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(fileType)) {
+      return new Response(
+        JSON.stringify({ error: 'Unsupported file type. Only images and PDFs are allowed.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Extract base64 data
+    const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
+    
+    // Validate base64 size (10MB limit)
+    const estimatedSize = (base64Data.length * 3) / 4;
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    if (estimatedSize > MAX_SIZE) {
+      return new Response(
+        JSON.stringify({ error: 'File size exceeds 10MB limit' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify file type with magic bytes
+    try {
+      const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      const magicBytes = MAGIC_BYTES[fileType];
+      
+      if (magicBytes) {
+        const isValidType = magicBytes.some(signature => 
+          signature.every((byte, index) => binaryData[index] === byte)
+        );
+        
+        if (!isValidType) {
+          return new Response(
+            JSON.stringify({ error: 'File content does not match declared type' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    } catch (decodeError) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid base64 encoding' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Starting menu extraction with model: ${model} for user: ${user.id}`);
     
     // Get Lovable AI key from environment
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -100,40 +211,58 @@ Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
 
     console.log('Calling Lovable AI Gateway...');
     
-    // Call Lovable AI Gateway with vision model
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: userPrompt
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageData
+    // Call Lovable AI Gateway with vision model (with timeout)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    let response;
+    try {
+      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: userPrompt
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageData
+                  }
                 }
-              }
-            ]
-          }
-        ],
-        max_tokens: 4000,
-        temperature: 0.1, // Low temperature for consistency
-      }),
-    });
+              ]
+            }
+          ],
+          max_tokens: 4000,
+          temperature: 0.1, // Low temperature for consistency
+        }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+    } catch (fetchError: unknown) {
+      clearTimeout(timeoutId);
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return new Response(
+          JSON.stringify({ error: 'Request timeout. Please try with a smaller file.' }),
+          { status: 408, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw fetchError;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -153,7 +282,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
         );
       }
       
-      throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
@@ -194,8 +323,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
     console.error('Menu extraction error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Failed to extract menu data',
-        details: error.stack
+        error: error.message || 'Failed to extract menu data'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

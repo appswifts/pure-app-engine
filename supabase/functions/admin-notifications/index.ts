@@ -17,6 +17,9 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// Rate limiting map: restaurant_id -> { count, resetTime }
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -24,7 +27,83 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Authenticate request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { type, restaurantId, data }: NotificationRequest = await req.json();
+
+    // Validate input
+    if (!type || !restaurantId) {
+      return new Response(
+        JSON.stringify({ error: 'Type and restaurantId are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const validTypes = ['new_restaurant', 'payment_proof', 'subscription_renewal', 'trial_ending'];
+    if (!validTypes.includes(type)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid notification type' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user is admin OR owns the restaurant
+    const { data: isAdminData } = await supabase.rpc('is_admin', { _user_id: user.id });
+    const isAdmin = isAdminData === true;
+
+    if (!isAdmin) {
+      // Verify restaurant ownership
+      const { data: restaurant, error: ownershipError } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('id', restaurantId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (ownershipError || !restaurant) {
+        return new Response(
+          JSON.stringify({ error: 'You do not have permission to send notifications for this restaurant' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Rate limiting: 10 notifications per hour per restaurant
+    const now = Date.now();
+    const restaurantLimit = rateLimitMap.get(restaurantId);
+    
+    if (restaurantLimit) {
+      if (now < restaurantLimit.resetTime) {
+        if (restaurantLimit.count >= 10) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Maximum 10 notifications per hour per restaurant.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        restaurantLimit.count++;
+      } else {
+        rateLimitMap.set(restaurantId, { count: 1, resetTime: now + 3600000 }); // 1 hour
+      }
+    } else {
+      rateLimitMap.set(restaurantId, { count: 1, resetTime: now + 3600000 });
+    }
 
     console.log(`Processing admin notification: ${type} for restaurant ${restaurantId}`);
 
@@ -175,7 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.error("Error in admin-notifications function:", error);
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'Internal server error' 
+      error: 'Failed to process notification'
     }), {
       status: 500,
       headers: { 
