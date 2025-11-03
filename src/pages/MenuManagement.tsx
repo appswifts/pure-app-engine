@@ -654,13 +654,13 @@ const MenuManagement = () => {
                       </Card>
                     ) : (
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
+                  <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Layers className="h-5 w-5" />
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <Layers className="h-5 w-5 text-primary" />
                         Categories
                       </CardTitle>
-                      <CardDescription>Organize your menu items into categories</CardDescription>
+                      <CardDescription className="mt-1">Organize your menu items into categories</CardDescription>
                     </div>
                     <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
                       <DialogTrigger asChild>
@@ -722,44 +722,63 @@ const MenuManagement = () => {
                     </Dialog>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-2">
-                      {categories.map((category) => (
-                        <Card key={category.id} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-medium">{category.name}</h4>
-                              {category.description && (
-                                <p className="text-sm text-muted-foreground">{category.description}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={category.is_active ? "default" : "secondary"}>
-                                {category.is_active ? "Active" : "Inactive"}
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => editCategory(category)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => deleteCategory(category.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                      {categories.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No categories found. Add your first category to organize your menu.
+                    {categories.length === 0 ? (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Layers className="h-8 w-8 text-muted-foreground" />
                         </div>
-                      )}
-                     </div>
+                        <h3 className="text-base font-semibold mb-2">No categories yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Categories help organize your menu items.
+                        </p>
+                        <Button variant="outline" onClick={() => setShowCategoryDialog(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add First Category
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {categories.map((category) => (
+                          <Card key={category.id} className="group hover:shadow-md transition-all duration-200 border-border/50 hover:border-primary/30">
+                            <CardContent className="p-5">
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-base mb-1">{category.name}</h4>
+                                    {category.description && (
+                                      <p className="text-sm text-muted-foreground line-clamp-2">{category.description}</p>
+                                    )}
+                                  </div>
+                                  <Badge variant={category.is_active ? "default" : "secondary"} className="shrink-0">
+                                    {category.is_active ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
+                                <div className="flex gap-2 pt-2 border-t border-border/50">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => editCategory(category)}
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => deleteCategory(category.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                    </CardContent>
                  </Card>
                     )}
@@ -767,13 +786,13 @@ const MenuManagement = () => {
                     {/* Accompaniments Management - Simplified */}
                     {selectedMenuGroupId && (
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
+                  <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Coffee className="h-5 w-5" />
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <Coffee className="h-5 w-5 text-primary" />
                         Accompaniments
                       </CardTitle>
-                      <CardDescription>Manage side dishes and extras</CardDescription>
+                      <CardDescription className="mt-1">Manage side dishes and extras</CardDescription>
                     </div>
                     <Dialog open={showAccompanimentDialog} onOpenChange={setShowAccompanimentDialog}>
                       <DialogTrigger asChild>
@@ -828,39 +847,56 @@ const MenuManagement = () => {
                     </Dialog>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-2">
-                      {accompaniments.map((accompaniment) => (
-                        <Card key={accompaniment.id} className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h5 className="font-medium">{accompaniment.name}</h5>
-                              <p className="text-sm font-semibold text-primary">{formatPrice(accompaniment.price)}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => editAccompaniment(accompaniment)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => deleteAccompaniment(accompaniment.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                      {accompaniments.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No accompaniments found. Add your first accompaniment to offer extras with your menu items.
+                    {accompaniments.length === 0 ? (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Coffee className="h-8 w-8 text-muted-foreground" />
                         </div>
-                      )}
-                   </div>
+                        <h3 className="text-base font-semibold mb-2">No accompaniments yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Offer side dishes and extras with your menu items.
+                        </p>
+                        <Button variant="outline" onClick={() => setShowAccompanimentDialog(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add First Accompaniment
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {accompaniments.map((accompaniment) => (
+                          <Card key={accompaniment.id} className="group hover:shadow-md transition-all duration-200 border-border/50 hover:border-primary/30">
+                            <CardContent className="p-5">
+                              <div className="space-y-3">
+                                <div>
+                                  <h5 className="font-semibold text-base mb-2">{accompaniment.name}</h5>
+                                  <p className="text-xl font-bold text-primary">{formatPrice(accompaniment.price)}</p>
+                                </div>
+                                <div className="flex gap-2 pt-2 border-t border-border/50">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => editAccompaniment(accompaniment)}
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => deleteAccompaniment(accompaniment.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                  </CardContent>
                </Card>
                )}
@@ -868,209 +904,254 @@ const MenuManagement = () => {
                 {/* Menu Items */}
                 {selectedMenuGroupId && (
                 <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <ChefHat className="h-5 w-5" />
-                      Menu Items
-                    </CardTitle>
-                    <CardDescription>Add and manage your menu items</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Filter by category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
-                      <DialogTrigger asChild>
-                        <Button onClick={() => {
-                          setEditingItem(null);
-                          setItemForm({
-                            name: "",
-                            description: "",
-                            price: "",
-                            category_id: "",
-                            image_url: "",
-                            is_available: true,
-                            is_accompaniment: false,
-                            variations: [],
-                            selectedAccompaniments: []
-                          });
-                        }}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Item
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>{editingItem ? "Edit Menu Item" : "Add New Menu Item"}</DialogTitle>
-                          <DialogDescription>Add details for your menu item</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleItemSubmit}>
-                          <div className="grid gap-6 py-4">
-                            {/* Basic Information */}
-                            <div className="space-y-4">
-                              <div className="grid gap-4">
-                                <div className="grid gap-2">
-                                  <Label htmlFor="item-name">Item Name</Label>
-                                  <Input
-                                    id="item-name"
-                                    value={itemForm.name}
-                                    onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                                    placeholder="e.g., Grilled Chicken"
-                                    required
-                                  />
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label htmlFor="item-category">Category</Label>
-                                  <Select value={itemForm.category_id} onValueChange={(value) => setItemForm({ ...itemForm, category_id: value })}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {categories.map((category) => (
-                                        <SelectItem key={category.id} value={category.id}>
-                                          {category.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label htmlFor="item-price">Base Price (RWF)</Label>
-                                  <Input
-                                    id="item-price"
-                                    type="number"
-                                    value={itemForm.price}
-                                    onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
-                                    placeholder="e.g., 2500"
-                                    required
-                                  />
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label htmlFor="item-description">Description (Optional)</Label>
-                                  <Textarea
-                                    id="item-description"
-                                    value={itemForm.description}
-                                    onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
-                                    placeholder="Describe the dish"
-                                  />
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label htmlFor="item-image">Image URL (Optional)</Label>
-                                  <Input
-                                    id="item-image"
-                                    value={itemForm.image_url}
-                                    onChange={(e) => setItemForm({ ...itemForm, image_url: e.target.value })}
-                                    placeholder="e.g., https://example.com/image.jpg"
-                                  />
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    id="item-available"
-                                    checked={itemForm.is_available}
-                                    onCheckedChange={(checked) => setItemForm({ ...itemForm, is_available: checked })}
-                                  />
-                                  <Label htmlFor="item-available">Available</Label>
+                <CardHeader className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-2xl">
+                        <ChefHat className="h-6 w-6 text-primary" />
+                        Menu Items
+                      </CardTitle>
+                      <CardDescription className="mt-1">Beautiful grid view of your menu</CardDescription>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-full sm:w-48">
+                          <SelectValue placeholder="Filter by category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
+                        <DialogTrigger asChild>
+                          <Button onClick={() => {
+                            setEditingItem(null);
+                            setItemForm({
+                              name: "",
+                              description: "",
+                              price: "",
+                              category_id: "",
+                              image_url: "",
+                              is_available: true,
+                              is_accompaniment: false,
+                              variations: [],
+                              selectedAccompaniments: []
+                            });
+                          }} size="default" className="w-full sm:w-auto">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Item
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>{editingItem ? "Edit Menu Item" : "Add New Menu Item"}</DialogTitle>
+                            <DialogDescription>Add details for your menu item</DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={handleItemSubmit}>
+                            <div className="grid gap-6 py-4">
+                              {/* Basic Information */}
+                              <div className="space-y-4">
+                                <div className="grid gap-4">
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="item-name">Item Name</Label>
+                                    <Input
+                                      id="item-name"
+                                      value={itemForm.name}
+                                      onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                                      placeholder="e.g., Grilled Chicken"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="item-category">Category</Label>
+                                    <Select value={itemForm.category_id} onValueChange={(value) => setItemForm({ ...itemForm, category_id: value })}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select category" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {categories.map((category) => (
+                                          <SelectItem key={category.id} value={category.id}>
+                                            {category.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="item-price">Base Price (RWF)</Label>
+                                    <Input
+                                      id="item-price"
+                                      type="number"
+                                      value={itemForm.price}
+                                      onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
+                                      placeholder="e.g., 2500"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="item-description">Description (Optional)</Label>
+                                    <Textarea
+                                      id="item-description"
+                                      value={itemForm.description}
+                                      onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
+                                      placeholder="Describe the dish"
+                                    />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="item-image">Image URL (Optional)</Label>
+                                    <Input
+                                      id="item-image"
+                                      value={itemForm.image_url}
+                                      onChange={(e) => setItemForm({ ...itemForm, image_url: e.target.value })}
+                                      placeholder="e.g., https://example.com/image.jpg"
+                                    />
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Switch
+                                      id="item-available"
+                                      checked={itemForm.is_available}
+                                      onCheckedChange={(checked) => setItemForm({ ...itemForm, is_available: checked })}
+                                    />
+                                    <Label htmlFor="item-available">Available</Label>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                          <DialogFooter>
-                            <Button type="submit" disabled={loading}>
-                              {loading ? "Saving..." : editingItem ? "Update Item" : "Create Item"}
-                            </Button>
-                          </DialogFooter>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+                            <DialogFooter>
+                              <Button type="submit" disabled={loading}>
+                                {loading ? "Saving..." : editingItem ? "Update Item" : "Create Item"}
+                              </Button>
+                            </DialogFooter>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
+                  {selectedCategory !== "all" && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-sm">
+                        Filtered by: {categories.find(c => c.id === selectedCategory)?.name}
+                      </Badge>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedCategory("all")}>
+                        Clear filter
+                      </Button>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4">
-                    {items.map((item) => (
-                      <Card key={item.id} className="p-4">
-                        <div className="flex items-start justify-between gap-4">
+                  {items.length === 0 ? (
+                    <div className="text-center py-16">
+                      <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <UtensilsCrossed className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">No menu items yet</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {selectedCategory !== "all" ? "Try selecting a different category or " : ""}Start building your menu by adding your first item.
+                      </p>
+                      <Button onClick={() => setShowItemDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add First Item
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {items.map((item) => (
+                        <Card key={item.id} className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
                           {/* Image Section */}
-                          <div className="flex-shrink-0">
+                          <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                             {item.image_url ? (
                               <img 
                                 src={item.image_url} 
                                 alt={item.name}
-                                className="w-20 h-20 object-cover rounded-lg border"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 onError={(e) => {
-                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop';
+                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
                                 }}
                               />
                             ) : (
-                              <div className="w-20 h-20 bg-gray-100 rounded-lg border flex items-center justify-center">
-                                <UtensilsCrossed className="h-8 w-8 text-gray-400" />
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                                <UtensilsCrossed className="h-16 w-16 text-muted-foreground/30" />
                               </div>
                             )}
+                            {/* Status badge overlay */}
+                            <div className="absolute top-3 right-3">
+                              <Badge 
+                                variant={item.is_available ? "default" : "secondary"} 
+                                className="shadow-md backdrop-blur-sm"
+                              >
+                                {item.is_available ? (
+                                  <><Eye className="h-3 w-3 mr-1" /> Available</>
+                                ) : (
+                                  <><EyeOff className="h-3 w-3 mr-1" /> Unavailable</>
+                                )}
+                              </Badge>
+                            </div>
+                            {/* Actions overlay */}
+                            <div className="absolute top-3 left-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="h-8 w-8 shadow-md backdrop-blur-sm"
+                                onClick={() => editItem(item)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="secondary"
+                                className="h-8 w-8 shadow-md backdrop-blur-sm"
+                                onClick={() => deleteItem(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                           
                           {/* Content Section */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-medium">{item.name}</h3>
-                              <Badge variant={item.is_available ? "default" : "secondary"}>
-                                {item.is_available ? <Eye className="h-3 w-3 mr-1" /> : <EyeOff className="h-3 w-3 mr-1" />}
-                                {item.is_available ? "Available" : "Unavailable"}
-                              </Badge>
+                          <CardContent className="p-5">
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="font-semibold text-lg leading-tight mb-1 line-clamp-1">
+                                  {item.name}
+                                </h3>
+                                {item.description && (
+                                  <p className="text-sm text-muted-foreground line-clamp-2">
+                                    {item.description}
+                                  </p>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center justify-between">
+                                <p className="text-2xl font-bold text-primary">
+                                  {formatPrice(item.base_price)}
+                                </p>
+                                {item.item_variations && item.item_variations.length > 0 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {item.item_variations.length} variation{item.item_variations.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                              </div>
+                              
                               {item.item_variations && item.item_variations.length > 0 && (
-                                <Badge variant="outline" className="text-xs">
-                                  {item.item_variations.length} variation{item.item_variations.length !== 1 ? 's' : ''}
-                                </Badge>
+                                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
+                                  {item.item_variations.map((variation) => (
+                                    <Badge key={variation.id} variant="outline" className="text-xs font-normal">
+                                      {variation.name} {variation.price_modifier >= 0 ? '+' : ''}{formatPrice(variation.price_modifier)}
+                                    </Badge>
+                                  ))}
+                                </div>
                               )}
                             </div>
-                            {item.description && <p className="text-sm text-muted-foreground mb-2">{item.description}</p>}
-                            <p className="text-lg font-semibold text-primary">{formatPrice(item.base_price)}</p>
-                            {item.item_variations && item.item_variations.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {item.item_variations.map((variation) => (
-                                  <Badge key={variation.id} variant="outline" className="text-xs">
-                                    {variation.name} ({variation.price_modifier >= 0 ? '+' : ''}{formatPrice(variation.price_modifier)})
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Actions Section */}
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => editItem(item)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => deleteItem(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                    {items.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No menu items found. {selectedCategory !== "all" ? "Try selecting a different category or " : ""}Add your first menu item to get started.
-                      </div>
-                    )}
-                  </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                  </CardContent>
                </Card>
                     )}
