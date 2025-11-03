@@ -513,7 +513,8 @@ const MenuManagement = () => {
       setShowAccompanimentDialog(false);
       setAccompanimentForm({
         name: "",
-        price: ""
+        price: "",
+        is_required: false
       });
       setEditingAccompaniment(null);
       fetchAccompaniments();
@@ -565,7 +566,8 @@ const MenuManagement = () => {
     setEditingAccompaniment(accompaniment);
     setAccompanimentForm({
       name: accompaniment.name,
-      price: accompaniment.price.toString()
+      price: accompaniment.price.toString(),
+      is_required: accompaniment.is_required || false
     });
     setShowAccompanimentDialog(true);
   };
@@ -779,7 +781,8 @@ const MenuManagement = () => {
                           setEditingAccompaniment(null);
                           setAccompanimentForm({
                             name: "",
-                            price: ""
+                            price: "",
+                            is_required: false
                           });
                         }}>
                           <Plus className="h-4 w-4 mr-2" />

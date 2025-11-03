@@ -237,7 +237,7 @@ const PublicMenu = () => {
       const [menuGroupsResult, tableResult] = await Promise.all([
         supabase
           .from("menu_groups")
-          .select("id, name, slug, display_order")
+          .select("*")
           .eq("restaurant_id", restaurantData.id)
           .eq("is_active", true)
           .order("display_order"),
@@ -268,7 +268,6 @@ const PublicMenu = () => {
         // Try to find group by name from query parameter
         const group = menuGroupsData.find(g => 
           g.name.toLowerCase() === groupParam.toLowerCase() || 
-          g.slug === groupParam ||
           g.id === groupParam
         );
         selectedGroup = group ? group.id : (menuGroupsData[0]?.id || null);
@@ -282,12 +281,12 @@ const PublicMenu = () => {
       const [categoriesResult, itemsResult] = await Promise.all([
         supabase
           .from("categories")
-          .select("id, name, menu_group_id, display_order")
+          .select("*")
           .eq("restaurant_id", restaurantData.id)
           .order("display_order"),
         supabase
           .from("menu_items")
-          .select("id, name, description, base_price, category_id, image_url, display_order")
+          .select("*")
           .eq("restaurant_id", restaurantData.id)
           .eq("is_available", true)
           .order("display_order")

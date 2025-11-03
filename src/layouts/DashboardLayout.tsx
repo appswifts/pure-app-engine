@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import BrandLogo from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
-import { Menu as MenuIcon, X } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Menu as MenuIcon, X, ChevronRight } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { RestaurantLoadingSkeleton } from "@/components/RestaurantLoadingSkeleton";
 
@@ -20,7 +21,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Determine active tab from URL path
   const getActiveTabFromPath = () => {
     const path = location.pathname;
     if (path === '/dashboard' || path === '/dashboard/overview') return 'overview';
@@ -36,7 +36,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const [activeTab, setActiveTab] = useState(getActiveTabFromPath());
 
-  // Update active tab when location changes
   useEffect(() => {
     setActiveTab(getActiveTabFromPath());
   }, [location.pathname]);
@@ -53,11 +52,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         
         setUser(session.user);
         
-        // Check if user is admin
         const { data: adminData } = await supabase.rpc('is_admin', { _user_id: session.user.id });
         setIsAdmin(!!adminData);
         
-        // Fetch restaurants
         const { data: userRestaurants } = await supabase
           .from("restaurants")
           .select("*")
@@ -88,14 +85,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const sidebarItems = [
-    { id: "overview", label: "Dashboard", materialIcon: "dashboard" },
-    { id: "menu", label: "Menu Management", materialIcon: "restaurant_menu" },
-    { id: "ai-import", label: "AI Menu Import", materialIcon: "smart_toy" },
-    { id: "tables", label: "Tables", materialIcon: "table_restaurant" },
-    { id: "qr", label: "QR Code Generator", materialIcon: "qr_code_2" },
-    { id: "embed", label: "Embed Code", materialIcon: "code" },
-    { id: "subscription", label: "Subscription", materialIcon: "credit_card" },
-    { id: "settings", label: "Settings", materialIcon: "settings" }
+    { id: "overview", label: "Dashboard", materialIcon: "dashboard", description: "Overview & stats" },
+    { id: "menu", label: "Menu", materialIcon: "restaurant_menu", description: "Manage items" },
+    { id: "ai-import", label: "AI Import", materialIcon: "smart_toy", description: "Auto-import menu" },
+    { id: "tables", label: "Tables", materialIcon: "table_restaurant", description: "Table management" },
+    { id: "qr", label: "QR Codes", materialIcon: "qr_code_2", description: "Generate codes" },
+    { id: "embed", label: "Embed", materialIcon: "code", description: "Website integration" },
+    { id: "subscription", label: "Billing", materialIcon: "credit_card", description: "Subscription" },
+    { id: "settings", label: "Settings", materialIcon: "settings", description: "Preferences" }
   ];
 
   if (loading) {
@@ -103,46 +100,58 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
       {/* Mobile Header */}
-      <div className="lg:hidden bg-background-light dark:bg-background-dark border-b border-primary-green/20 dark:border-primary-green/30 p-4 flex items-center justify-between sticky top-0 z-30">
-        <BrandLogo size="responsive" restaurant={restaurant} />
-        <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
-          <MenuIcon className="h-5 w-5" />
+      <header className="lg:hidden bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center gap-2">
+          <BrandLogo size="responsive" restaurant={restaurant} />
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="rounded-full">
+          {sidebarOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
         </Button>
-      </div>
+      </header>
 
       <div className="flex min-h-screen">
-        {/* Sidebar - Fixed/Sticky */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed inset-y-0 left-0 z-50 w-64 bg-background-light dark:bg-background-dark p-4 flex flex-col justify-between border-r border-primary-green/20 dark:border-primary-green/30 transition-transform duration-300 ease-in-out overflow-y-auto`}>
-          <div>
+        {/* Sidebar - Modern Glass Design */}
+        <aside className={`
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+          lg:translate-x-0 fixed inset-y-0 left-0 z-50 w-64 
+          bg-card/80 backdrop-blur-xl border-r border-border/50
+          transition-all duration-300 ease-out overflow-y-auto
+          shadow-xl lg:shadow-none
+        `}>
+          <div className="flex flex-col h-full">
             {/* Mobile Close Button */}
-            <div className="lg:hidden mb-4 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
-                <X className="h-5 w-5" />
+            <div className="lg:hidden p-4 flex justify-end">
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="rounded-full">
+                <X className="h-4 w-4" />
               </Button>
             </div>
 
             {/* Profile Section */}
-            <div className="flex items-center gap-3 mb-8">
-              <div 
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 flex-shrink-0"
-                style={{backgroundImage: `url(${user?.user_metadata?.avatar_url || restaurant?.logo_url || 'https://via.placeholder.com/48'})`}}
-              />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                  {user?.user_metadata?.full_name || restaurant?.name || 'Restaurant Owner'}
-                </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Owner</p>
+            <div className="px-4 py-6">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+                  <AvatarImage src={user?.user_metadata?.avatar_url || restaurant?.logo_url} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {(restaurant?.name || 'R')[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-sm font-bold text-foreground truncate">
+                    {restaurant?.name || 'My Restaurant'}
+                  </h1>
+                  <p className="text-xs text-muted-foreground">Restaurant Owner</p>
+                </div>
               </div>
             </div>
 
             {/* Navigation */}
-            <nav className="flex flex-col gap-2">
+            <nav className="flex-1 px-4 space-y-1">
               {sidebarItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
-                  <a
+                  <button
                     key={item.id}
                     onClick={() => {
                       const urlMap: Record<string, string> = {
@@ -158,68 +167,67 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                       navigate(urlMap[item.id] || '/dashboard/overview');
                       setSidebarOpen(false);
                     }}
-                    className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer ${
-                      isActive 
-                        ? 'bg-primary-green/20 dark:bg-primary-green/30 text-gray-900 dark:text-white font-medium' 
-                        : 'hover:bg-primary-green/10 dark:hover:bg-primary-green/20 text-gray-700 dark:text-gray-300'
-                    }`}
+                    className={`
+                      group relative w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
+                      transition-all duration-200 ease-out text-left
+                      ${isActive 
+                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
+                        : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                      }
+                    `}
                   >
-                    <span className="material-symbols-outlined">{item.materialIcon}</span>
-                    <span>{item.label}</span>
-                  </a>
+                    <span className="material-symbols-outlined text-[20px]">{item.materialIcon}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm block">{item.label}</span>
+                      <span className="text-[10px] opacity-70 block">{item.description}</span>
+                    </div>
+                    {isActive && (
+                      <ChevronRight className="h-4 w-4 animate-in slide-in-from-left-1" />
+                    )}
+                  </button>
                 );
               })}
             </nav>
-          </div>
 
-          {/* Sidebar Footer */}
-          <div className="flex flex-col gap-2">
-            <a
-              onClick={() => {
-                navigate("/dashboard/restaurants");
-                setSidebarOpen(false);
-              }}
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-primary-green/10 dark:hover:bg-primary-green/20 cursor-pointer text-gray-700 dark:text-gray-300"
-            >
-              <span className="material-symbols-outlined">store</span>
-              <span>My Restaurants</span>
-            </a>
-            {isAdmin && (
-              <a
+            {/* Sidebar Footer */}
+            <div className="p-4 space-y-2 border-t border-border/50">
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    navigate("/admin");
+                    setSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">shield</span>
+                  <span className="text-sm font-medium">Admin Panel</span>
+                </button>
+              )}
+              <button
                 onClick={() => {
-                  navigate("/admin");
+                  handleSignOut();
                   setSidebarOpen(false);
                 }}
-                className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-primary-green/10 dark:hover:bg-primary-green/20 cursor-pointer text-gray-700 dark:text-gray-300"
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
               >
-                <span className="material-symbols-outlined">shield</span>
-                <span>Admin Panel</span>
-              </a>
-            )}
-            <a
-              onClick={() => {
-                handleSignOut();
-                setSidebarOpen(false);
-              }}
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-primary-green/10 dark:hover:bg-primary-green/20 cursor-pointer text-gray-700 dark:text-gray-300"
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>Sign Out</span>
-            </a>
+                <span className="material-symbols-outlined text-[20px]">logout</span>
+                <span className="text-sm font-medium">Sign Out</span>
+              </button>
+            </div>
           </div>
         </aside>
 
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div 
-            className="lg:hidden fixed inset-0 bg-black/50 z-40" 
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in duration-200" 
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Main Content - Offset for Sidebar */}
-        <main className="flex-1 min-h-screen overflow-auto lg:ml-64 w-full">
-          <div className="p-4 lg:p-8">
+        {/* Main Content */}
+        <main className="flex-1 min-h-screen lg:ml-64 w-full">
+          <div className="p-4 lg:p-8 max-w-7xl mx-auto">
             {children}
           </div>
         </main>
