@@ -661,8 +661,11 @@ const PublicMenu = () => {
                 </button>
                 <button
                   onClick={formatWhatsAppOrder}
-                  className="flex-1 py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2"
-                  style={{ backgroundColor: brandColor, color: textColor }}
+                  className={`flex-1 py-3 px-4 ${selectedMenuGroup?.whatsapp_button_border_radius || 'rounded-lg'} font-medium flex items-center justify-center gap-2`}
+                  style={{ 
+                    backgroundColor: selectedMenuGroup?.whatsapp_button_bg_color || brandColor, 
+                    color: selectedMenuGroup?.whatsapp_button_text_color || textColor 
+                  }}
                 >
                   <MessageCircle className="h-4 w-4" />
                   Order Now

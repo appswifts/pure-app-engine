@@ -533,14 +533,24 @@ export default function MenuGroupSettings() {
               </Card>
 
               {useCustomSettings && (
-                <>
-                  {/* Brand Colors */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Brand Colors</CardTitle>
-                      <CardDescription>Customize the color scheme for this menu group</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
+                <Tabs defaultValue="global" className="w-full mt-6">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="global">🎨 Global Settings</TabsTrigger>
+                    <TabsTrigger value="advanced">⚙️ Advanced Settings</TabsTrigger>
+                  </TabsList>
+
+                  {/* GLOBAL CUSTOMIZATION TAB */}
+                  <TabsContent value="global" className="space-y-6">
+                    {/* Brand Colors */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🎨</span>
+                          Brand Colors
+                        </CardTitle>
+                        <CardDescription>Set primary colors that affect buttons, highlights, and accents across the menu</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
                       <div className="space-y-3">
                         <Label htmlFor="brand-color" className="text-base font-semibold">Brand Color</Label>
                         <p className="text-sm text-muted-foreground mb-2">Primary color for buttons, highlights, and accents</p>
@@ -600,9 +610,12 @@ export default function MenuGroupSettings() {
                   </Card>
 
                   {/* Font & Typography */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Typography</CardTitle>
+                  <Card className="border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="bg-muted/30">
+                      <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">✍️</span>
+                        Typography
+                      </CardTitle>
                       <CardDescription>Choose the font style for your menu text</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -631,9 +644,12 @@ export default function MenuGroupSettings() {
                   </Card>
 
                   {/* Card & Button Styling */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Layout & Styling</CardTitle>
+                  <Card className="border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="bg-muted/30">
+                      <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">🎴</span>
+                        Layout & Styling
+                      </CardTitle>
                       <CardDescription>Customize the look and feel of menu cards and buttons</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -671,9 +687,12 @@ export default function MenuGroupSettings() {
                   </Card>
 
                   {/* Background */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Background</CardTitle>
+                  <Card className="border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="bg-muted/30">
+                      <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">🖼️</span>
+                        Background
+                      </CardTitle>
                       <CardDescription>Set the background appearance for your menu</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -724,7 +743,506 @@ export default function MenuGroupSettings() {
                       )}
                     </CardContent>
                   </Card>
-                </>
+
+                    {/* Global Border Radius */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">⭕</span>
+                          Global Roundness
+                        </CardTitle>
+                        <CardDescription>Set the overall roundness level for all elements</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <Label className="text-base font-semibold">Roundness Level</Label>
+                          <select
+                            value={customizationForm.global_border_radius || ''}
+                            onChange={(e) => setCustomizationForm({...customizationForm, global_border_radius: e.target.value})}
+                            className="flex h-12 w-full rounded-md border border-input bg-background px-4 py-2 text-base font-medium cursor-pointer"
+                          >
+                            <option value="">Default</option>
+                            <option value="none">None - Sharp Corners</option>
+                            <option value="sm">Small - Slightly Rounded</option>
+                            <option value="md">Medium - Moderately Rounded</option>
+                            <option value="lg">Large - Very Rounded</option>
+                            <option value="xl">Extra Large - Maximum Roundness</option>
+                            <option value="full">Full - Circular/Pills</option>
+                          </select>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* ADVANCED CUSTOMIZATION TAB */}
+                  <TabsContent value="advanced" className="space-y-4">
+                    {/* Logo Customization */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🏷️</span>
+                          Logo Styling
+                        </CardTitle>
+                        <CardDescription>Customize how your logo appears</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Border Width</Label>
+                            <Input
+                              type="text"
+                              placeholder="4px"
+                              value={customizationForm.logo_border_width || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, logo_border_width: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Border Color</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.logo_border_color || customizationForm.brand_color || '#F97316'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, logo_border_color: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Border Radius</Label>
+                          <select
+                            value={customizationForm.logo_border_radius || ''}
+                            onChange={(e) => setCustomizationForm({...customizationForm, logo_border_radius: e.target.value})}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                          >
+                            <option value="">Default (Full Circle)</option>
+                            <option value="rounded-none">Square</option>
+                            <option value="rounded-lg">Rounded</option>
+                            <option value="rounded-full">Circle</option>
+                          </select>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Card Item Customization */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🃏</span>
+                          Menu Item Cards
+                        </CardTitle>
+                        <CardDescription>Customize the appearance of menu item cards</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Background Color</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.card_background_color || '#FFFFFF'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, card_background_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Border Color</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.card_border_color || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, card_border_color: e.target.value})}
+                              placeholder="Optional"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Border Radius</Label>
+                            <select
+                              value={customizationForm.card_border_radius || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, card_border_radius: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                            >
+                              <option value="">Default</option>
+                              <option value="rounded-none">Square</option>
+                              <option value="rounded-md">Small</option>
+                              <option value="rounded-lg">Medium</option>
+                              <option value="rounded-xl">Large</option>
+                              <option value="rounded-2xl">Extra Large</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Padding</Label>
+                            <select
+                              value={customizationForm.card_padding || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, card_padding: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                            >
+                              <option value="">Default</option>
+                              <option value="p-2">Compact</option>
+                              <option value="p-4">Normal</option>
+                              <option value="p-6">Spacious</option>
+                              <option value="p-8">Extra Spacious</option>
+                            </select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Price Customization */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">💰</span>
+                          Price Display
+                        </CardTitle>
+                        <CardDescription>Customize how prices are displayed</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>Text Color</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.price_text_color || customizationForm.brand_color || '#F97316'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, price_text_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Font Size</Label>
+                            <select
+                              value={customizationForm.price_font_size || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, price_font_size: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                            >
+                              <option value="">Default</option>
+                              <option value="text-sm">Small</option>
+                              <option value="text-base">Base</option>
+                              <option value="text-lg">Large</option>
+                              <option value="text-xl">Extra Large</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Font Weight</Label>
+                            <select
+                              value={customizationForm.price_font_weight || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, price_font_weight: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                            >
+                              <option value="">Default</option>
+                              <option value="font-normal">Normal</option>
+                              <option value="font-semibold">Semi-Bold</option>
+                              <option value="font-bold">Bold</option>
+                            </select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Button Customizations */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🔘</span>
+                          Button Styling
+                        </CardTitle>
+                        <CardDescription>Customize Add, Quantity, Cart, and WhatsApp buttons</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Add Button */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium">Add Button</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Background</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.add_button_bg_color || customizationForm.brand_color || '#F97316'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, add_button_bg_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Text Color</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.add_button_text_color || '#FFFFFF'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, add_button_text_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Border Radius</Label>
+                              <select
+                                value={customizationForm.add_button_border_radius || ''}
+                                onChange={(e) => setCustomizationForm({...customizationForm, add_button_border_radius: e.target.value})}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                              >
+                                <option value="">Default</option>
+                                <option value="rounded-none">Square</option>
+                                <option value="rounded-md">Rounded</option>
+                                <option value="rounded-lg">Large</option>
+                                <option value="rounded-full">Pill</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quantity Controls */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium">Quantity Controls (+/-)</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Button Background</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.quantity_button_bg_color || customizationForm.brand_color || '#F97316'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, quantity_button_bg_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Button Text</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.quantity_button_text_color || '#FFFFFF'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, quantity_button_text_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Number Color</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.quantity_text_color || '#000000'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, quantity_text_color: e.target.value})}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cart Button */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium">Cart Button (View Order)</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Background</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.cart_button_bg_color || customizationForm.brand_color || '#F97316'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, cart_button_bg_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Text Color</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.cart_button_text_color || '#FFFFFF'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, cart_button_text_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Border Radius</Label>
+                              <select
+                                value={customizationForm.cart_button_border_radius || ''}
+                                onChange={(e) => setCustomizationForm({...customizationForm, cart_button_border_radius: e.target.value})}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                              >
+                                <option value="">Default</option>
+                                <option value="rounded-none">Square</option>
+                                <option value="rounded-md">Rounded</option>
+                                <option value="rounded-lg">Large</option>
+                                <option value="rounded-full">Pill</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* WhatsApp Button */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium">WhatsApp Order Button</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Background</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.whatsapp_button_bg_color || customizationForm.brand_color || '#F97316'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, whatsapp_button_bg_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Text Color</Label>
+                              <Input
+                                type="color"
+                                value={customizationForm.whatsapp_button_text_color || '#FFFFFF'}
+                                onChange={(e) => setCustomizationForm({...customizationForm, whatsapp_button_text_color: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Border Radius</Label>
+                              <select
+                                value={customizationForm.whatsapp_button_border_radius || ''}
+                                onChange={(e) => setCustomizationForm({...customizationForm, whatsapp_button_border_radius: e.target.value})}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                              >
+                                <option value="">Default</option>
+                                <option value="rounded-none">Square</option>
+                                <option value="rounded-md">Rounded</option>
+                                <option value="rounded-lg">Large</option>
+                                <option value="rounded-full">Pill</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Category Buttons */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">📑</span>
+                          Category Navigation
+                        </CardTitle>
+                        <CardDescription>Customize category button appearance</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Inactive Background</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.category_button_bg_color || '#FFFFFF'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, category_button_bg_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Inactive Text</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.category_button_text_color || '#374151'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, category_button_text_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Active Background</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.category_button_active_bg_color || customizationForm.brand_color || '#F97316'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, category_button_active_bg_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Active Text</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.category_button_active_text_color || '#FFFFFF'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, category_button_active_text_color: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Cart Dialog */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🛒</span>
+                          Cart Dialog
+                        </CardTitle>
+                        <CardDescription>Customize the order review modal</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Background Color</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.cart_dialog_bg_color || '#FFFFFF'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, cart_dialog_bg_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Header Background</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.cart_dialog_header_bg_color || ''}
+                              placeholder="Optional"
+                              onChange={(e) => setCustomizationForm({...customizationForm, cart_dialog_header_bg_color: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Image Styling */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🖼️</span>
+                          Menu Item Images
+                        </CardTitle>
+                        <CardDescription>Customize how item images appear</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Border Radius</Label>
+                            <select
+                              value={customizationForm.image_border_radius || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, image_border_radius: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                            >
+                              <option value="">Default</option>
+                              <option value="rounded-none">Square</option>
+                              <option value="rounded-md">Small</option>
+                              <option value="rounded-lg">Medium</option>
+                              <option value="rounded-xl">Large</option>
+                              <option value="rounded-full">Circle</option>
+                            </select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Search Bar */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-muted/30">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🔍</span>
+                          Search Bar
+                        </CardTitle>
+                        <CardDescription>Customize the search input</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>Background</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.search_bg_color || 'rgba(255,255,255,0.9)'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, search_bg_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Text Color</Label>
+                            <Input
+                              type="color"
+                              value={customizationForm.search_text_color || '#000000'}
+                              onChange={(e) => setCustomizationForm({...customizationForm, search_text_color: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Border Radius</Label>
+                            <select
+                              value={customizationForm.search_border_radius || ''}
+                              onChange={(e) => setCustomizationForm({...customizationForm, search_border_radius: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                            >
+                              <option value="">Default</option>
+                              <option value="rounded-none">Square</option>
+                              <option value="rounded-md">Small</option>
+                              <option value="rounded-lg">Medium</option>
+                              <option value="rounded-full">Pill</option>
+                            </select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               )}
 
               {/* Save Button */}
