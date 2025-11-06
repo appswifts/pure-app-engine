@@ -1,0 +1,4 @@
+# Supabase Edge Functions Configuration
+
+[functions.generate-food-image]
+verify_jwt = false

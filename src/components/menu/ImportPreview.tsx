@@ -44,6 +44,10 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
   } | null>(null);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [imageProgress, setImageProgress] = useState({ current: 0, total: 0 });
+  const [generatingItemImage, setGeneratingItemImage] = useState<{
+    categoryIndex: number;
+    itemIndex: number;
+  } | null>(null);
 
   const totalItems = data.categories.reduce(
     (sum, cat) => sum + cat.items.length,
@@ -129,6 +133,63 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
     } finally {
       setIsGeneratingImages(false);
       setImageProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleGenerateSingleItemImage = async (categoryIndex: number, itemIndex: number) => {
+    const item = data.categories[categoryIndex].items[itemIndex];
+    
+    setGeneratingItemImage({ categoryIndex, itemIndex });
+    
+    try {
+      // Call Supabase Edge Function to avoid CORS issues
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        toast.error('Supabase configuration not found');
+        return;
+      }
+
+      const prompt = `delicious ${item.name}, food photography, professional lighting, high quality, appetizing`;
+      
+      toast.info(`Generating image for ${item.name}...`);
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-food-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ prompt }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || "Failed to generate image");
+      }
+
+      // Response contains the base64 image URL
+      const responseData = await response.json();
+      
+      if (!responseData.imageUrl) {
+        throw new Error("No image URL in response");
+      }
+      
+      // Update the item with the generated image
+      const newData = { ...data };
+      newData.categories[categoryIndex].items[itemIndex].image_url = responseData.imageUrl;
+      setData(newData);
+      
+      toast.success(`Image generated for ${item.name}!`);
+    } catch (error: any) {
+      console.error('Image generation error:', error);
+      toast.error(`Failed to generate image for ${item.name}`);
+    } finally {
+      setGeneratingItemImage(null);
     }
   };
 
@@ -226,17 +287,37 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
                       return (
                         <TableRow key={itemIndex}>
                           <TableCell>
-                            {item.image_url ? (
-                              <img 
-                                src={item.image_url} 
-                                alt={item.name}
-                                className="w-16 h-16 object-cover rounded-lg border"
-                              />
-                            ) : (
-                              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-                                No image
-                              </div>
-                            )}
+                            <div className="relative group">
+                              {item.image_url ? (
+                                <img 
+                                  src={item.image_url} 
+                                  alt={item.name}
+                                  className="w-16 h-16 object-cover rounded-lg border"
+                                />
+                              ) : generatingItemImage?.categoryIndex === categoryIndex && 
+                                 generatingItemImage?.itemIndex === itemIndex ? (
+                                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg flex items-center justify-center animate-pulse">
+                                  <Sparkles className="w-6 h-6 text-purple-600 animate-spin" />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                                  No image
+                                </div>
+                              )}
+                              {/* AI Generate Button Overlay */}
+                              {!item.image_url && 
+                               !(generatingItemImage?.categoryIndex === categoryIndex && 
+                                 generatingItemImage?.itemIndex === itemIndex) && (
+                                <button
+                                  onClick={() => handleGenerateSingleItemImage(categoryIndex, itemIndex)}
+                                  disabled={isImporting || generatingItemImage !== null}
+                                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
+                                  title="Generate AI Image"
+                                >
+                                  <Sparkles className="w-5 h-5 text-white" />
+                                </button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {isEditing ? (

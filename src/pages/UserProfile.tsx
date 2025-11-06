@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { RestaurantSidebar } from "@/components/RestaurantSidebar";
+import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,7 +29,6 @@ const UserProfile = () => {
     try {
       if (!user) return;
 
-      // Get user data from auth
       const { data: authData } = await supabase.auth.getUser();
       
       if (authData?.user) {
@@ -120,121 +118,113 @@ const UserProfile = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <RestaurantSidebar />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold">User Profile</h1>
-              <p className="text-sm text-muted-foreground">Manage your account settings</p>
+    <ModernDashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">User Profile</h1>
+          <p className="text-muted-foreground">Manage your account settings</p>
+        </div>
+
+        {/* Profile Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Profile Information
+            </CardTitle>
+            <CardDescription>
+              Update your personal information
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="full-name">Full Name</Label>
+                <Input
+                  id="full-name"
+                  value={userData.full_name}
+                  onChange={(e) => setUserData({ ...userData, full_name: e.target.value })}
+                  placeholder="Enter your full name"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={userData.email}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed. Contact support if needed.
+                </p>
+              </div>
+
+              <Button type="submit" disabled={loading}>
+                {loading ? "Updating..." : "Update Profile"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Security */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Security
+            </CardTitle>
+            <CardDescription>
+              Manage your password and security settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Password</Label>
+              <p className="text-sm text-muted-foreground mb-2">
+                Request a password reset email to change your password
+              </p>
+              <Button variant="outline" onClick={handleChangePassword}>
+                Send Password Reset Email
+              </Button>
             </div>
-          </header>
+          </CardContent>
+        </Card>
 
-          <div className="flex-1 space-y-6 p-6 max-w-2xl">
-            {/* Profile Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Information
-                </CardTitle>
-                <CardDescription>
-                  Update your personal information
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="full-name">Full Name</Label>
-                    <Input
-                      id="full-name"
-                      value={userData.full_name}
-                      onChange={(e) => setUserData({ ...userData, full_name: e.target.value })}
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        type="email"
-                        value={userData.email}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Email cannot be changed. Contact support if needed.
-                    </p>
-                  </div>
-
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "Updating..." : "Update Profile"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Security */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Security
-                </CardTitle>
-                <CardDescription>
-                  Manage your password and security settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Password</Label>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Request a password reset email to change your password
-                  </p>
-                  <Button variant="outline" onClick={handleChangePassword}>
-                    Send Password Reset Email
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Account Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Account Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm font-medium">User ID</span>
-                  <span className="text-sm text-muted-foreground font-mono">
-                    {user?.id?.substring(0, 8)}...
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm font-medium">Member Since</span>
-                  <span className="text-sm text-muted-foreground">
-                    {userData.created_at ? new Date(userData.created_at).toLocaleDateString() : "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm font-medium">Account Status</span>
-                  <span className="text-sm font-semibold text-green-600">Active</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </SidebarInset>
+        {/* Account Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Account Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between items-center py-2 border-b">
+              <span className="text-sm font-medium">User ID</span>
+              <span className="text-sm text-muted-foreground font-mono">
+                {user?.id?.substring(0, 8)}...
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b">
+              <span className="text-sm font-medium">Member Since</span>
+              <span className="text-sm text-muted-foreground">
+                {userData.created_at ? new Date(userData.created_at).toLocaleDateString() : "N/A"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm font-medium">Account Status</span>
+              <span className="text-sm font-semibold text-green-600">Active</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </SidebarProvider>
+    </ModernDashboardLayout>
   );
 };
 

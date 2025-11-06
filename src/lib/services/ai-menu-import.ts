@@ -906,53 +906,30 @@ export const generateFoodImage = async (
     
     console.log('Generating image with prompt:', prompt);
     
-    // Use Stable Diffusion XL model for better quality
+    // Call Supabase Edge Function to avoid CORS issues
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error('Supabase configuration not found');
+      return '';
+    }
+    
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+      `${SUPABASE_URL}/functions/v1/generate-food-image`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer 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',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            negative_prompt: [
-              'blurry',
-              'low quality',
-              'unappetizing',
-              'messy',
-              'dark',
-              'ugly',
-              'distorted',
-              'deformed',
-              'text',
-              'watermark',
-              'logo',
-              'cartoon',
-              'anime',
-              'drawing',
-              'artificial',
-              'fake',
-              'plastic',
-              'toy',
-              'oversaturated',
-              'grainy',
-              'noisy'
-            ].join(', '),
-            num_inference_steps: 50,  // Higher steps for better quality
-            guidance_scale: 9.0,  // Higher guidance for more accurate results
-            width: 768,  // Larger size for better detail
-            height: 768,
-          },
-        }),
+        body: JSON.stringify({ prompt }),
       }
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Image generation failed:', response.status, errorText);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('Image generation failed:', response.status, errorData);
       
       // If model is loading, wait and retry once
       if (response.status === 503) {
@@ -961,22 +938,18 @@ export const generateFoodImage = async (
         return generateFoodImage(itemName, description);
       }
       
-      throw new Error(`Image generation failed: ${response.status}`);
+      throw new Error(`Image generation failed: ${errorData.error || response.status}`);
     }
 
-    // Response is a blob (image)
-    const blob = await response.blob();
+    // Response contains the base64 image URL
+    const data = await response.json();
     
-    // Convert blob to base64 data URL
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        console.log('Image generated successfully for:', itemName);
-        resolve(reader.result as string);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    if (!data.imageUrl) {
+      throw new Error('No image URL in response');
+    }
+    
+    console.log('Image generated successfully for:', itemName);
+    return data.imageUrl;
   } catch (error: any) {
     console.error('Image generation error for', itemName, ':', error);
     // Return empty string to skip this image

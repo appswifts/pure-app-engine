@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,39 +82,6 @@ const RestaurantSettings = () => {
   const [categoriesCount, setCategoriesCount] = useState(0);
   const { toast } = useToast();
 
-  // Sidebar navigation items
-  const sidebarItems = [
-    {
-      id: "menu",
-      label: "Menu Items",
-      icon: ChefHat,
-      description: "Manage your menu and items"
-    },
-    {
-      id: "analytics",
-      label: "Analytics",
-      icon: BarChart3,
-      description: "View performance insights"
-    },
-    {
-      id: "qr",
-      label: "QR Codes",
-      icon: QrCode,
-      description: "Generate QR codes for tables"
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
-      description: "Restaurant settings and preferences"
-    }
-  ];
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
-
   useEffect(() => {
     loadRestaurantData();
   }, []);
@@ -189,14 +157,13 @@ const RestaurantSettings = () => {
       // }
 
       // Load statistics
-      const [menuItemsResult, tablesResult, categoriesResult] = await Promise.all([
+      const [menuItemsResult, categoriesResult] = await Promise.all([
         supabase.from("menu_items").select("id", { count: 'exact' }).eq("restaurant_id", data.id),
-        supabase.from("tables").select("id", { count: 'exact' }).eq("restaurant_id", data.id),
         supabase.from("categories").select("id", { count: 'exact' }).eq("restaurant_id", data.id)
       ]);
 
       setMenuItemsCount(menuItemsResult.count || 0);
-      setTablesCount(tablesResult.count || 0);
+      setTablesCount(0); // Tables feature not implemented yet
       setCategoriesCount(categoriesResult.count || 0);
 
     } catch (error: any) {
@@ -360,123 +327,50 @@ const RestaurantSettings = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading settings...</div>
-      </div>
+      <ModernDashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading restaurant settings...</p>
+          </div>
+        </div>
+      </ModernDashboardLayout>
     );
   }
 
   if (!restaurant) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Restaurant not found</div>
-      </div>
+      <ModernDashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <p className="text-muted-foreground">Restaurant not found</p>
+            <Button onClick={() => navigate('/dashboard/overview')} className="mt-4">
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </ModernDashboardLayout>
     );
   }
 
   const subscriptionStatus = getSubscriptionStatus();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5">
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r shadow-lg">
-        <div className="flex h-full flex-col">
-          {/* Sidebar Header */}
-          <div className="border-b p-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-center">
-                <BrandLogo size="3xl" restaurant={restaurant} />
-              </div>
-              <div className="text-center">
-                <span className="block text-sm font-medium text-foreground truncate">{restaurant?.name || 'Restaurant Dashboard'}</span>
-                <span className="block text-xs text-muted-foreground">Settings</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar Navigation */}
-          <nav className="flex-1 overflow-y-auto space-y-2 p-4">
-            <div className="space-y-1">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.id === 'settings';
-                
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      if (item.id === 'settings') {
-                        // Already on settings page
-                        return;
-                      } else {
-                        navigate('/dashboard/overview');
-                      }
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all hover:bg-accent/50 ${
-                      isActive 
-                        ? 'bg-primary text-primary-foreground shadow-sm' 
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{item.label}</div>
-                      <div className={`text-xs truncate ${
-                        isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                      }`}>
-                        {item.description}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-4 border-t space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => navigate('/dashboard/overview')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="w-full justify-start text-muted-foreground"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
+    <ModernDashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Restaurant Settings</h1>
+          <p className="text-muted-foreground">Complete management of your restaurant profile and configuration</p>
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="pl-64">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="flex items-center gap-3 mb-6">
-            <Settings className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-3xl font-bold">Restaurant Settings</h1>
-              <p className="text-muted-foreground">Complete management of your restaurant profile and configuration</p>
-            </div>
-          </div>
-
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="design">Menu Design</TabsTrigger>
-
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="design">Menu Design</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          </TabsList>
 
         <TabsContent value="profile" className="mt-6">
           <div className="grid gap-6">
@@ -1524,9 +1418,8 @@ const RestaurantSettings = () => {
         </div>
       </Tabs>
     </div>
-  </main>
-</div>
-);
+  </ModernDashboardLayout>
+  );
 };
 
 export default RestaurantSettings;

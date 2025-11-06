@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardLayout } from "@/layouts/DashboardLayout";
+import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,7 +111,7 @@ const RestaurantsGrid = () => {
 
   const selectRestaurant = (restaurant: Restaurant) => {
     localStorage.setItem("selectedRestaurantId", restaurant.id);
-    navigate("/dashboard");
+    navigate(`/dashboard/restaurant/${restaurant.slug}`);
   };
 
   const handleDeleteRestaurant = async (restaurantId: string, restaurantName: string) => {
@@ -144,19 +144,19 @@ const RestaurantsGrid = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <ModernDashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading restaurants...</p>
           </div>
         </div>
-      </DashboardLayout>
+      </ModernDashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <ModernDashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -327,7 +327,7 @@ const RestaurantsGrid = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </ModernDashboardLayout>
   );
 };
 

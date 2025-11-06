@@ -5,7 +5,7 @@
 @tailwind utilities;
 /* stylelint-enable at-rule-no-unknown */
 
-/* Clean Sans Font - Using system fonts for optimal performance */
+/* Global Font: Work Sans - Loaded from Google Fonts in index.html */
 
 /* Hide scrollbar for webkit browsers */
 .scrollbar-hide::-webkit-scrollbar {

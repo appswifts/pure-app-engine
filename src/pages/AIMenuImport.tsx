@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowLeft, Settings } from 'lucide-react';
-import { DashboardLayout } from '@/layouts/DashboardLayout';
+import { ModernDashboardLayout } from '@/components/ModernDashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,7 @@ interface Restaurant {
 interface MenuGroup {
   id: string;
   name: string;
+  slug: string;
   restaurant_id: string;
 }
 
@@ -132,7 +133,7 @@ export default function AIMenuImport() {
     try {
       const { data, error } = await supabase
         .from('menu_groups')
-        .select('id, name, restaurant_id')
+        .select('id, name, slug, restaurant_id')
         .eq('restaurant_id', restaurantId)
         .eq('is_active', true)
         .order('display_order');
@@ -448,11 +449,24 @@ export default function AIMenuImport() {
   };
 
   const handleViewMenu = () => {
-    navigate('/dashboard/menu');
+    if (selectedMenuGroup) {
+      // Find the selected menu group to get its slug
+      const menuGroup = menuGroups.find(g => g.id === selectedMenuGroup);
+      if (menuGroup?.slug) {
+        // Navigate using the clean slug URL
+        navigate(`/dashboard/menu-groups/${menuGroup.slug}`);
+      } else {
+        // Fallback if no slug found
+        navigate('/dashboard/menu');
+      }
+    } else {
+      // Fallback to general menu page
+      navigate('/dashboard/menu');
+    }
   };
 
   return (
-    <DashboardLayout>
+    <ModernDashboardLayout>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -806,6 +820,6 @@ export default function AIMenuImport() {
           </Card>
         )}
       </div>
-    </DashboardLayout>
+    </ModernDashboardLayout>
   );
 }

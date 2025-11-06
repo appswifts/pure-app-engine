@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { heroui } from "@heroui/react";
 
 export default {
 	darkMode: ["class"],
@@ -7,6 +8,7 @@ export default {
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
+		"./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}",
 	],
 	prefix: "",
 	theme: {
@@ -19,7 +21,7 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Arial', 'sans-serif'],
+				sans: ['Work Sans', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Arial', 'sans-serif'],
 				display: ['Work Sans', 'sans-serif'],
 			},
 			colors: {
@@ -108,5 +110,47 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		require("tailwindcss-animate"),
+		heroui({
+			themes: {
+				light: {
+					colors: {
+						primary: {
+							DEFAULT: "#3B82F6",
+							foreground: "#FFFFFF",
+						},
+						secondary: {
+							DEFAULT: "#EF4444",
+							foreground: "#FFFFFF",
+						},
+						success: {
+							DEFAULT: "#10B981",
+							foreground: "#FFFFFF",
+						},
+						warning: {
+							DEFAULT: "#F59E0B",
+							foreground: "#FFFFFF",
+						},
+						danger: {
+							DEFAULT: "#EF4444",
+							foreground: "#FFFFFF",
+						},
+					},
+				},
+				dark: {
+					colors: {
+						primary: {
+							DEFAULT: "#3B82F6",
+							foreground: "#FFFFFF",
+						},
+						secondary: {
+							DEFAULT: "#EF4444",
+							foreground: "#FFFFFF",
+						},
+					},
+				},
+			},
+		}),
+	],
 } satisfies Config;

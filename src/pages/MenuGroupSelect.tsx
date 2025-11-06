@@ -26,7 +26,7 @@ interface MenuGroup {
 }
 
 const MenuGroupSelect = () => {
-  const { restaurantSlug, tableId } = useParams();
+  const { restaurantSlug, tableSlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -34,10 +34,10 @@ const MenuGroupSelect = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (restaurantSlug && tableId) {
+    if (restaurantSlug && tableSlug) {
       loadData();
     }
-  }, [restaurantSlug, tableId]);
+  }, [restaurantSlug, tableSlug]);
 
   const loadData = async () => {
     try {
@@ -88,7 +88,7 @@ const MenuGroupSelect = () => {
 
   const handleGroupSelect = (group: MenuGroup) => {
     // Navigate to public menu with selected group
-    navigate(`/public-menu/${restaurantSlug}/${tableId}?group=${group.id}`);
+    navigate(`/menu/${restaurantSlug}/${tableSlug}?group=${group.id}`);
   };
 
   const getBackgroundStyle = () => {
