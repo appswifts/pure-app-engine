@@ -1,14 +1,15 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { PerformanceMonitor } from "@/utils/performanceMonitor";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs, HomeBreadcrumb } from "@/components/ui/breadcrumbs";
 import { MenuItemCard } from "@/components/ui/menu-item-card";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { Store, UtensilsCrossed, FolderTree, Plus, Sparkles } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { AIImageGenerator } from "@/components/menu/AIImageGenerator";
 import type { Database } from "@/integrations/supabase/types";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -56,9 +57,12 @@ export default function MenuGroupManagement() {
     description: "",
   });
 
+  const loadStartTime = useRef<number>(0);
+  
   const loadData = useCallback(async (abortSignal?: AbortSignal) => {
     try {
       setLoading(true);
+      loadStartTime.current = performance.now();
 
       let restaurantData: any = null;
       let groupData: any = null;
@@ -129,6 +133,11 @@ export default function MenuGroupManagement() {
         setCategories(categoriesData);
         setItems([]);
         setLoading(false);
+        
+        // Track performance for empty categories
+        const loadTime = performance.now() - loadStartTime.current;
+        PerformanceMonitor.trackPageLoad(`MenuGroup-${groupData.slug}`, loadTime);
+        console.log(`✅ Menu loaded (no categories): 0 items in ${loadTime.toFixed(2)}ms`);
         return;
       }
 
@@ -151,6 +160,11 @@ export default function MenuGroupManagement() {
         setCategories(categoriesData);
         setItems([]);
         setLoading(false);
+        
+        // Track performance for empty items
+        const loadTime = performance.now() - loadStartTime.current;
+        PerformanceMonitor.trackPageLoad(`MenuGroup-${groupData.slug}`, loadTime);
+        console.log(`✅ Menu loaded (no items): 0 items in ${loadTime.toFixed(2)}ms`);
         return;
       }
 
@@ -172,10 +186,16 @@ export default function MenuGroupManagement() {
         variationsError = result.error;
       }
       
-      const { data: accompanimentsData, error: accompanimentsError } = await supabase
+      let accompanimentsData: any[] = [];
+      let accompanimentsError: any = null;
+      
+      const accompanimentsQuery = (supabase as any)
         .from("accompaniments")
         .select("*")
         .eq("restaurant_id", restaurantData.id);
+      const accompanimentsResult = await accompanimentsQuery;
+      accompanimentsData = accompanimentsResult.data || [];
+      accompanimentsError = accompanimentsResult.error;
 
       if (variationsError) console.warn('Variations error:', variationsError);
       if (accompanimentsError) console.warn('Accompaniments error:', accompanimentsError);
@@ -212,6 +232,11 @@ export default function MenuGroupManagement() {
       setCategories(categoriesData);
       setItems(itemsWithRelations);
       setLoading(false); // Set loading to false on success
+      
+      // Track performance
+      const loadTime = performance.now() - loadStartTime.current;
+      PerformanceMonitor.trackPageLoad(`MenuGroup-${groupData.slug}`, loadTime);
+      console.log(`✅ Menu loaded: ${itemsWithRelations.length} items in ${loadTime.toFixed(2)}ms`);
     } catch (error: any) {
       // Ignore abort errors (from React StrictMode cleanup)
       if (error.message?.includes('AbortError') || error.code === '20') {
@@ -288,12 +313,12 @@ export default function MenuGroupManagement() {
 
       // Fetch variations and accompaniments in PARALLEL
       const [variationsQueryResult, accompanimentsQueryResult] = await Promise.all([
-        supabase
+        (supabase as any)
           .from("item_variations")
           .select("*")
           .in("menu_item_id", itemIds),
         
-        supabase
+        (supabase as any)
           .from("accompaniments")
           .select("*")
           .eq("restaurant_id", restaurant.id)

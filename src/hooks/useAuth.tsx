@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingTracker } from '@/utils/debugUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       // Check user role from user_roles table
-      const { data: roleData, error: roleError } = await supabase
+      const { data: roleData, error: roleError } = await (supabase as any)
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
@@ -93,9 +94,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    let authLoadingStarted = false;
+    
+    // Get initial session
+    const initAuth = async () => {
+      if (!authLoadingStarted) {
+        authLoadingStarted = true;
+        LoadingTracker.startLoading('Auth');
+      }
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await checkRole();
+        }
+        
+        setLoading(false);
+        LoadingTracker.endLoading('Auth', true);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setLoading(false);
+        LoadingTracker.endLoading('Auth', false);
+      }
+    };
+    
+    // Set up auth state listener (only for changes, not initial load)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Skip initial session event to avoid duplicate loading
+        if (event === 'INITIAL_SESSION') return;
+        
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -113,17 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await checkRole();
-      }
-      
-      setLoading(false);
-    });
+    initAuth();
 
     return () => subscription.unsubscribe();
   }, []);

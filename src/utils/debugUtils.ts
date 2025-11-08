@@ -5,13 +5,15 @@ export class LoadingTracker {
     startTime: number; 
     errors: any[];
     completedTime?: number;
+    performanceStartTime?: number;
   }> = new Map();
 
   static startLoading(component: string) {
-    console.log(`🔄 [${component}] Loading started`);
+    console.log(`🔄 [${component}] Loading started at ${new Date().toISOString()}`);
     this.loadingStates.set(component, {
       isLoading: true,
       startTime: Date.now(),
+      performanceStartTime: performance.now(),
       errors: []
     });
   }
@@ -19,8 +21,10 @@ export class LoadingTracker {
   static endLoading(component: string, success: boolean = true) {
     const state = this.loadingStates.get(component);
     if (state) {
-      const duration = Date.now() - state.startTime;
-      console.log(`${success ? '✅' : '❌'} [${component}] Loading ${success ? 'completed' : 'failed'} in ${duration}ms`);
+      const performanceDuration = state.performanceStartTime 
+        ? performance.now() - state.performanceStartTime 
+        : Date.now() - state.startTime;
+      console.log(`${success ? '✅' : '❌'} [${component}] Loading ${success ? 'completed' : 'failed'} in ${Math.round(performanceDuration)}ms`);
       state.isLoading = false;
       state.completedTime = Date.now();
     }

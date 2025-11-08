@@ -84,7 +84,9 @@ const Restaurants = () => {
           variant: "destructive"
         });
       }
+      LoadingTracker.endLoading('Restaurants', true);
     } catch (error: any) {
+      LoadingTracker.endLoading('Restaurants', false);
       console.error('Error loading restaurant data:', error);
       toast({
         title: "Error",

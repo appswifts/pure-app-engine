@@ -41,6 +41,7 @@ import {
   AdminProtectedRoute,
 } from "./components/ProtectedRoute";
 import { LoadingDebugPanel } from "./components/LoadingDebugPanel";
+import { AuthCleanup } from "@/utils/authCleanup";
 
 import { createOptimizedQueryClient } from "@/lib/queryOptimization";
 
@@ -50,6 +51,13 @@ const App = () => {
   // Initialize i18n system on app start
   useEffect(() => {
     initializeI18n().catch(console.error);
+    
+    // Validate auth tokens on startup
+    AuthCleanup.validateTokens().then(isValid => {
+      if (!isValid) {
+        console.warn('Auth tokens may need refresh - run AuthCleanup.fixAuthLoading() if experiencing issues');
+      }
+    });
   }, []);
   const handleGlobalError = (error: Error, errorInfo: React.ErrorInfo) => {
     // Log to error service
