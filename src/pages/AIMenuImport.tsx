@@ -131,9 +131,9 @@ export default function AIMenuImport() {
 
   const fetchMenuGroups = async (restaurantId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('menu_groups')
-        .select('id, name, slug, restaurant_id')
+        .select('id, name, slug, restaurant_id, currency')
         .eq('restaurant_id', restaurantId)
         .eq('is_active', true)
         .order('display_order');

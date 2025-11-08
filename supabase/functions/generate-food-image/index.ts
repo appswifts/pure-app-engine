@@ -47,6 +47,7 @@ serve(async (req) => {
   }
 
   try {
+    // No authentication required - this is a public image generation service
     const { prompt } = await req.json()
     
     if (!prompt) {

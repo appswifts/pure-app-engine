@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { Breadcrumbs, HomeBreadcrumb } from "@/components/ui/breadcrumbs";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
-import { ChevronRight, Plus, Store, UtensilsCrossed } from "lucide-react";
+import { ChevronRight, Plus, Store, UtensilsCrossed, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { LoadingTracker } from "@/utils/debugUtils";
 
 interface Restaurant {
   id: string;
@@ -49,6 +50,9 @@ export default function RestaurantOverview() {
   const [menuGroups, setMenuGroups] = useState<MenuGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<MenuGroup | null>(null);
+  const [groupToDelete, setGroupToDelete] = useState<MenuGroup | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -62,6 +66,9 @@ export default function RestaurantOverview() {
   }, [slug]);
 
   const loadRestaurantData = async () => {
+    if (!slug) return;
+
+    LoadingTracker.startLoading('RestaurantOverview');
     try {
       setLoading(true);
 
@@ -84,7 +91,9 @@ export default function RestaurantOverview() {
 
       if (groupsError) throw groupsError;
       setMenuGroups(groupsData || []);
+      LoadingTracker.endLoading('RestaurantOverview', true);
     } catch (error: any) {
+      LoadingTracker.endLoading('RestaurantOverview', false);
       console.error("Error loading restaurant:", error);
       toast({
         title: "Error loading data",
@@ -110,6 +119,8 @@ export default function RestaurantOverview() {
 
   const handleCloseDialog = () => {
     setIsAddDialogOpen(false);
+    setIsEditMode(false);
+    setEditingGroup(null);
     setFormData({ name: "", description: "" });
   };
 
@@ -159,6 +170,92 @@ export default function RestaurantOverview() {
       toast({
         title: "Error",
         description: error.message || "Failed to create menu group",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenEditDialog = (group: MenuGroup) => {
+    setEditingGroup(group);
+    setFormData({
+      name: group.name,
+      description: group.description || "",
+    });
+    setIsEditMode(true);
+    setIsAddDialogOpen(true);
+  };
+
+  const handleUpdateMenuGroup = async () => {
+    if (!editingGroup || !formData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Menu group name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const slug = generateSlug(formData.name);
+
+      const { error } = await supabase
+        .from("menu_groups")
+        .update({
+          name: formData.name,
+          slug: slug,
+          description: formData.description || null,
+        })
+        .eq("id", editingGroup.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Menu group updated successfully",
+      });
+
+      handleCloseDialog();
+      loadRestaurantData();
+    } catch (error: any) {
+      console.error("Error updating menu group:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update menu group",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteMenuGroup = async () => {
+    if (!groupToDelete) return;
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from("menu_groups")
+        .delete()
+        .eq("id", groupToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Menu group deleted successfully",
+      });
+
+      setGroupToDelete(null);
+      loadRestaurantData();
+    } catch (error: any) {
+      console.error("Error deleting menu group:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete menu group",
         variant: "destructive",
       });
     } finally {
@@ -291,17 +388,44 @@ export default function RestaurantOverview() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/dashboard/restaurant/${restaurant.slug}/group/${group.slug}`);
-                      }}
-                    >
-                      Manage Menu
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/restaurant/${restaurant.slug}/group/${group.slug}`);
+                        }}
+                      >
+                        Manage Menu
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditDialog(group);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToDelete(group);
+                          }}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -313,9 +437,12 @@ export default function RestaurantOverview() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Menu Group</DialogTitle>
+              <DialogTitle>{isEditMode ? "Edit Menu Group" : "Create New Menu Group"}</DialogTitle>
               <DialogDescription>
-                Add a new menu group to organize your restaurant's offerings (e.g., Breakfast, Lunch, Dinner, Drinks).
+                {isEditMode 
+                  ? "Update the details of your menu group."
+                  : "Add a new menu group to organize your restaurant's offerings (e.g., Breakfast, Lunch, Dinner, Drinks)."
+                }
               </DialogDescription>
             </DialogHeader>
 
@@ -355,8 +482,39 @@ export default function RestaurantOverview() {
               <Button variant="outline" onClick={handleCloseDialog}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateMenuGroup} disabled={saving || !formData.name.trim()}>
-                {saving ? "Creating..." : "Create Menu Group"}
+              <Button 
+                onClick={isEditMode ? handleUpdateMenuGroup : handleCreateMenuGroup} 
+                disabled={saving || !formData.name.trim()}
+              >
+                {saving 
+                  ? (isEditMode ? "Updating..." : "Creating...") 
+                  : (isEditMode ? "Update Menu Group" : "Create Menu Group")
+                }
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!groupToDelete} onOpenChange={(open) => !open && setGroupToDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Menu Group</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{groupToDelete?.name}"? This action cannot be undone.
+                All menu items in this group will also be affected.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGroupToDelete(null)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteMenuGroup} 
+                disabled={saving}
+              >
+                {saving ? "Deleting..." : "Delete Menu Group"}
               </Button>
             </DialogFooter>
           </DialogContent>

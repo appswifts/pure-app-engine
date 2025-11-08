@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,10 +40,12 @@ interface MenuGroup {
   is_active: boolean;
   // Base customization
   brand_color?: string;
+  secondary_color?: string;
   text_color?: string;
   font_family?: string;
   background_color?: string;
   background_style?: string;
+  background_image?: string;
   card_style?: string;
   button_style?: string;
   // Logo customization
@@ -56,6 +58,12 @@ interface MenuGroup {
   card_border_color?: string;
   card_border_radius?: string;
   card_padding?: string;
+  // Item text customization
+  item_name_color?: string;
+  item_name_font_size?: string;
+  item_name_font_weight?: string;
+  item_description_color?: string;
+  item_description_font_size?: string;
   // Price customization
   price_text_color?: string;
   price_font_size?: string;
@@ -79,7 +87,15 @@ interface MenuGroup {
   // Cart dialog customization
   cart_dialog_bg_color?: string;
   cart_dialog_header_bg_color?: string;
+  cart_dialog_header_text_color?: string;
   cart_dialog_border_radius?: string;
+  cart_item_bg_color?: string;
+  cart_item_text_color?: string;
+  cart_remove_button_color?: string;
+  cart_border_color?: string;
+  cart_total_text_color?: string;
+  cart_continue_button_bg?: string;
+  cart_continue_button_text_color?: string;
   // WhatsApp button customization
   whatsapp_button_bg_color?: string;
   whatsapp_button_text_color?: string;
@@ -279,29 +295,51 @@ const PublicMenu = () => {
     return typeof value === 'string' ? value : defaultValue;
   };
 
-  const brandColor = getStyle("brand_color" as any, "#F97316");
-  const textColor = getStyle("text_color" as any, "#FFFFFF");
-  const fontFamily = getStyle("font_family" as any, "Work Sans");
-  const cardStyle = getStyle("card_style" as any, "rounded");
-  const buttonStyle = getStyle("button_style" as any, "rounded");
+  // Get all style values - no hardcoded defaults
+  const brandColor = getStyle("brand_color" as any, "");
+  const textColor = getStyle("text_color" as any, "");
+  const fontFamily = getStyle("font_family" as any, "Work Sans") || "Work Sans";
+  const cardStyle = getStyle("card_style" as any, "rounded") || "rounded";
+  const buttonStyle = getStyle("button_style" as any, "rounded") || "rounded";
   const bgColor = getStyle("background_color" as any, "");
-  const bgStyle = getStyle("background_style" as any, "gradient");
+  const bgStyle = getStyle("background_style" as any, "");
 
-  const getBackgroundStyle = () => {
-    const primary = restaurant?.secondary_color || "#EF4444";
-    const secondary = brandColor;
-
-    switch (bgStyle) {
-      case "solid":
-        return { backgroundColor: bgColor || primary };
-      case "image":
-        return restaurant?.background_image
-          ? { backgroundImage: `url(${restaurant.background_image})`, backgroundSize: "cover" }
-          : { background: `linear-gradient(135deg, ${primary}, ${secondary})` };
-      default:
-        return { background: `linear-gradient(135deg, ${primary}, ${secondary})` };
+  // Memoize background style to prevent recalculation and flickering
+  const getBackgroundStyle = useMemo(() => {
+    // If no restaurant data yet (loading), use clean white background
+    if (!restaurant) {
+      return { backgroundColor: '#ffffff', backgroundAttachment: 'fixed' };
     }
-  };
+
+    // Check menu group background_image first, then restaurant background_image
+    const backgroundImage = selectedMenuGroup?.background_image || restaurant.background_image;
+    const primary = selectedMenuGroup?.background_color || restaurant.secondary_color || "";
+    const secondary = selectedMenuGroup?.secondary_color || restaurant.brand_color || "";
+
+    // Only apply background if explicitly set
+    if (bgStyle === "solid" && bgColor) {
+      return { backgroundColor: bgColor, backgroundAttachment: 'fixed' };
+    }
+    
+    if (bgStyle === "image" && backgroundImage) {
+      return { 
+        backgroundImage: `url(${backgroundImage})`, 
+        backgroundSize: "cover", 
+        backgroundPosition: "center",
+        backgroundAttachment: 'fixed'
+      };
+    }
+    
+    if (bgStyle === "gradient" && (primary || secondary)) {
+      return { 
+        backgroundImage: `linear-gradient(135deg, ${primary || '#ffffff'}, ${secondary || primary || '#ffffff'})`,
+        backgroundAttachment: 'fixed'
+      };
+    }
+
+    // Default: clean white background
+    return { backgroundColor: '#ffffff', backgroundAttachment: 'fixed' };
+  }, [restaurant, selectedMenuGroup, bgStyle, bgColor, brandColor]);
 
   const getCardClass = () => {
     const base = "p-4 bg-white ";
@@ -382,7 +420,8 @@ const PublicMenu = () => {
     if (selectedMenuGroup && menuGroups.length > 0) {
       if (cat.menu_group_id && cat.menu_group_id !== selectedMenuGroup.id) return false;
     }
-    return menuItems.some(item => item.category_id === cat.id);
+    // Always show all categories, even if they have no items
+    return true;
   });
 
   const filteredItems = menuItems.filter(item => {
@@ -407,31 +446,22 @@ const PublicMenu = () => {
     return true;
   });
 
-  // ===== LOADING STATE =====
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={getBackgroundStyle()}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading menu...</p>
-        </div>
-      </div>
-    );
-  }
+  // ===== MAIN RENDER (Keep background consistent) =====
+  // Background style is now memoized to prevent flickering
 
-  // ===== ERROR STATES =====
-  if (!restaurant) {
+  // ===== ERROR STATES (Only show errors when not loading) =====
+  if (!loading && !restaurant) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-red-500 to-red-700 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="text-6xl mb-4">🍽️</div>
-          <h2 className="text-2xl font-bold text-white mb-2">Restaurant Not Found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Restaurant Not Found</h2>
         </div>
       </div>
     );
   }
 
-  if (accessInfo && !accessInfo.hasAccess) {
+  if (!loading && accessInfo && !accessInfo.hasAccess) {
     return <RestrictedMenuView restaurant={restaurant} accessInfo={accessInfo} />;
   }
 
@@ -439,8 +469,19 @@ const PublicMenu = () => {
   return (
     <div 
       className="min-h-screen relative" 
-      style={{ ...getBackgroundStyle(), fontFamily: `${fontFamily}, sans-serif`, backgroundAttachment: "fixed" }}
+      style={{ ...getBackgroundStyle, fontFamily: `${fontFamily}, sans-serif` }}
     >
+      {/* Loading State - Shows on custom background */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-gray-900 mx-auto mb-4"></div>
+            <p className="text-gray-900 font-medium">Loading menu...</p>
+          </div>
+        </div>
+      )}
+      
+      {restaurant && (
       <div className="relative z-10">
         {/* Restaurant Header */}
         <div className="text-center pt-12 pb-8">
@@ -450,7 +491,7 @@ const PublicMenu = () => {
                 selectedMenuGroup?.logo_border_radius || 'rounded-full'
               } ${selectedMenuGroup?.logo_show_border !== false ? 'border-4' : ''}`}
               style={{ 
-                borderColor: selectedMenuGroup?.logo_border_color || brandColor,
+                borderColor: selectedMenuGroup?.logo_border_color || brandColor || undefined,
                 borderWidth: selectedMenuGroup?.logo_border_width || '4px'
               }}
             >
@@ -458,8 +499,8 @@ const PublicMenu = () => {
                 <SafeImage src={restaurant.logo_url} alt={restaurant.name} className="w-full h-full object-cover" />
               ) : (
                 <div 
-                  className="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
-                  style={{ backgroundColor: brandColor }}
+                  className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gray-200 text-gray-700"
+                  style={{ backgroundColor: brandColor || undefined }}
                 >
                   {restaurant.name.charAt(0)}
                 </div>
@@ -467,9 +508,9 @@ const PublicMenu = () => {
             </div>
           </div>
           <h1 
-            className="text-2xl font-bold mb-2" 
+            className="text-2xl font-bold mb-2 text-gray-900" 
             style={{ 
-              color: textColor,
+              color: textColor || undefined,
               textShadow: selectedMenuGroup?.header_text_shadow ? '2px 2px 4px rgba(0,0,0,0.5)' : undefined
             }}
           >
@@ -481,8 +522,24 @@ const PublicMenu = () => {
         <div className="px-4 mb-8">
           <div className="max-w-md mx-auto">
             {!showSearch ? (
-              <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <div className="flex gap-2 flex-1">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-2 flex-1 overflow-x-auto pb-2 scrollbar-hide">
+                  {/* All Categories Button */}
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className={`px-6 py-2 text-sm font-medium transition-colors text-left whitespace-nowrap flex-shrink-0 ${selectedMenuGroup?.category_button_border_radius || 'rounded-lg'}`}
+                    style={{ 
+                      backgroundColor: selectedCategory === null 
+                        ? (selectedMenuGroup?.category_button_active_bg_color || brandColor)
+                        : (selectedMenuGroup?.category_button_bg_color || '#FFFFFF'),
+                      color: selectedCategory === null
+                        ? (selectedMenuGroup?.category_button_active_text_color || '#FFFFFF')
+                        : (selectedMenuGroup?.category_button_text_color || '#374151')
+                    }}
+                  >
+                    All Categories
+                  </button>
+                  
                   {filteredCategories.map((category) => {
                     const isActive = category.id === selectedCategory;
                     const categoryBg = isActive 
@@ -497,7 +554,7 @@ const PublicMenu = () => {
                       <button
                         key={category.id}
                         onClick={() => setSelectedCategory(category.id === selectedCategory ? null : category.id)}
-                        className={`px-6 py-2 text-sm font-medium transition-colors ${categoryRadius}`}
+                        className={`px-6 py-2 text-sm font-medium transition-colors text-left whitespace-nowrap flex-shrink-0 ${categoryRadius}`}
                         style={{ backgroundColor: categoryBg, color: categoryText }}
                       >
                         {category.name}
@@ -507,8 +564,8 @@ const PublicMenu = () => {
                 </div>
                 <button
                   onClick={() => setShowSearch(true)}
-                  className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30"
-                  style={{ color: textColor }}
+                  className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 flex-shrink-0 text-gray-900"
+                  style={{ color: textColor || undefined }}
                 >
                   <Search className="h-5 w-5" />
                 </button>
@@ -581,10 +638,10 @@ const PublicMenu = () => {
             <div className="max-w-md mx-auto">
               <button
                 onClick={() => setShowCart(true)}
-                className={`w-full py-4 px-6 ${selectedMenuGroup?.cart_button_border_radius || 'rounded-lg'} font-bold flex items-center justify-between shadow-lg`}
+                className={`w-full py-4 px-6 ${selectedMenuGroup?.cart_button_border_radius || 'rounded-lg'} font-bold flex items-center justify-between shadow-lg bg-gray-900 text-white`}
                 style={{ 
-                  backgroundColor: selectedMenuGroup?.cart_button_bg_color || brandColor, 
-                  color: selectedMenuGroup?.cart_button_text_color || textColor 
+                  backgroundColor: selectedMenuGroup?.cart_button_bg_color || brandColor || undefined, 
+                  color: selectedMenuGroup?.cart_button_text_color || textColor || undefined
                 }}
               >
                 <span>View Order ({cart.length})</span>
@@ -603,16 +660,26 @@ const PublicMenu = () => {
             >
               <div 
                 className="flex items-center justify-between mb-4 -mx-6 -mt-6 px-6 py-4 rounded-t-2xl"
-                style={{ backgroundColor: selectedMenuGroup?.cart_dialog_header_bg_color }}
+                style={{ backgroundColor: selectedMenuGroup?.cart_dialog_header_bg_color || '#f3f4f6' }}
               >
-                <h3 className="text-lg font-bold">Your Order</h3>
+                <h3 
+                  className="text-lg font-bold"
+                  style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }}
+                >
+                  Your Order
+                </h3>
                 <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                  <X className="h-5 w-5" />
+                  <X className="h-5 w-5" style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }} />
                 </button>
               </div>
 
               <div className="mb-4">
-                <Label htmlFor="customerName">Your Name</Label>
+                <Label 
+                  htmlFor="customerName"
+                  style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }}
+                >
+                  Your Name
+                </Label>
                 <Input
                   id="customerName"
                   placeholder="Enter your name"
@@ -624,20 +691,45 @@ const PublicMenu = () => {
 
               <div className="space-y-3 mb-6">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div 
+                    key={item.id} 
+                    className="flex items-center justify-between p-3 rounded-lg"
+                    style={{ backgroundColor: selectedMenuGroup?.cart_item_bg_color || '#f9fafb' }}
+                  >
                     <div className="flex-1">
-                      <h4 className="font-medium">{item.name}</h4>
-                      {item.variation && <p className="text-sm text-gray-600">Size: {item.variation.name}</p>}
+                      <h4 
+                        className="font-medium"
+                        style={{ color: selectedMenuGroup?.cart_item_text_color || '#000000' }}
+                      >
+                        {item.name}
+                      </h4>
+                      {item.variation && (
+                        <p 
+                          className="text-sm"
+                          style={{ color: selectedMenuGroup?.cart_item_text_color || '#6b7280' }}
+                        >
+                          Size: {item.variation.name}
+                        </p>
+                      )}
                       {item.accompaniments.length > 0 && (
-                        <p className="text-sm text-gray-600">
+                        <p 
+                          className="text-sm"
+                          style={{ color: selectedMenuGroup?.cart_item_text_color || '#6b7280' }}
+                        >
                           Add-ons: {item.accompaniments.map(a => a.name).join(", ")}
                         </p>
                       )}
-                      <p className="text-sm font-medium">{formatPrice(item.totalPrice)}</p>
+                      <p 
+                        className="text-sm font-medium"
+                        style={{ color: selectedMenuGroup?.cart_item_text_color || '#000000' }}
+                      >
+                        {formatPrice(item.totalPrice)}
+                      </p>
                     </div>
                     <button
                       onClick={() => removeFromCart(item.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                      className="p-2 hover:bg-red-50 rounded-full"
+                      style={{ color: selectedMenuGroup?.cart_remove_button_color || '#ef4444' }}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -645,8 +737,11 @@ const PublicMenu = () => {
                 ))}
               </div>
 
-              <div className="border-t pt-4 mb-4">
-                <div className="flex justify-between items-center text-lg font-bold">
+              <div className="border-t pt-4 mb-4" style={{ borderColor: selectedMenuGroup?.cart_border_color || '#e5e7eb' }}>
+                <div 
+                  className="flex justify-between items-center text-lg font-bold"
+                  style={{ color: selectedMenuGroup?.cart_total_text_color || '#000000' }}
+                >
                   <span>Total:</span>
                   <span>{formatPrice(cart.reduce((sum, item) => sum + item.totalPrice, 0))}</span>
                 </div>
@@ -655,16 +750,21 @@ const PublicMenu = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCart(false)}
-                  className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                  className="flex-1 py-3 px-4 border rounded-lg font-medium hover:opacity-90"
+                  style={{ 
+                    backgroundColor: selectedMenuGroup?.cart_continue_button_bg || '#ffffff',
+                    borderColor: '#d1d5db',
+                    color: selectedMenuGroup?.cart_continue_button_text_color || '#000000'
+                  }}
                 >
                   Continue Shopping
                 </button>
                 <button
                   onClick={formatWhatsAppOrder}
-                  className={`flex-1 py-3 px-4 ${selectedMenuGroup?.whatsapp_button_border_radius || 'rounded-lg'} font-medium flex items-center justify-center gap-2`}
+                  className={`flex-1 py-3 px-4 ${selectedMenuGroup?.whatsapp_button_border_radius || 'rounded-lg'} font-medium flex items-center justify-center gap-2 bg-green-600 text-white`}
                   style={{ 
-                    backgroundColor: selectedMenuGroup?.whatsapp_button_bg_color || brandColor, 
-                    color: selectedMenuGroup?.whatsapp_button_text_color || textColor 
+                    backgroundColor: selectedMenuGroup?.whatsapp_button_bg_color || brandColor || undefined, 
+                    color: selectedMenuGroup?.whatsapp_button_text_color || textColor || undefined
                   }}
                 >
                   <MessageCircle className="h-4 w-4" />
@@ -675,6 +775,7 @@ const PublicMenu = () => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };
@@ -750,13 +851,13 @@ const MenuItemCard = ({
     }
   };
 
-  // Get customization styles
+  // Get customization styles - no hardcoded colors
   const addButtonBg = menuGroup?.add_button_bg_color || brandColor;
-  const addButtonText = menuGroup?.add_button_text_color || '#FFFFFF';
+  const addButtonText = menuGroup?.add_button_text_color;
   const addButtonRadius = menuGroup?.add_button_border_radius || 'rounded-lg';
   const quantityButtonBg = menuGroup?.quantity_button_bg_color || brandColor;
-  const quantityButtonText = menuGroup?.quantity_button_text_color || '#FFFFFF';
-  const quantityTextColor = menuGroup?.quantity_text_color || '#000000';
+  const quantityButtonText = menuGroup?.quantity_button_text_color;
+  const quantityTextColor = menuGroup?.quantity_text_color;
   const priceColor = menuGroup?.price_text_color || brandColor;
   const priceFontSize = menuGroup?.price_font_size || 'text-base';
   const priceFontWeight = menuGroup?.price_font_weight || 'font-bold';
@@ -765,6 +866,11 @@ const MenuItemCard = ({
   const cardBorderColor = menuGroup?.card_border_color;
   const cardBorderRadius = menuGroup?.card_border_radius || 'rounded-xl';
   const cardPadding = menuGroup?.card_padding || 'p-4';
+  const itemNameColor = menuGroup?.item_name_color;
+  const itemNameSize = menuGroup?.item_name_font_size || 'text-base';
+  const itemNameWeight = menuGroup?.item_name_font_weight || 'font-semibold';
+  const itemDescColor = menuGroup?.item_description_color;
+  const itemDescSize = menuGroup?.item_description_font_size || 'text-sm';
 
   return (
     <div 
@@ -785,9 +891,21 @@ const MenuItemCard = ({
         )}
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900">{item.name}</h3>
-          {item.description && <p className="text-sm text-gray-500 truncate">{item.description}</p>}
-          <p className={`${priceFontSize} ${priceFontWeight}`} style={{ color: priceColor }}>
+          <h3 
+            className={`${itemNameSize} ${itemNameWeight} text-gray-900`}
+            style={{ color: itemNameColor || undefined }}
+          >
+            {item.name}
+          </h3>
+          {item.description && (
+            <p 
+              className={`${itemDescSize} text-gray-500 truncate`}
+              style={{ color: itemDescColor || undefined }}
+            >
+              {item.description}
+            </p>
+          )}
+          <p className={`${priceFontSize} ${priceFontWeight} text-gray-900`} style={{ color: priceColor || undefined }}>
             {formatPrice(totalPrice)}
           </p>
         </div>
@@ -802,8 +920,8 @@ const MenuItemCard = ({
                 handleAddToCart();
               }
             }}
-            className={`px-4 py-2 ${addButtonRadius} font-medium`}
-            style={{ backgroundColor: addButtonBg, color: addButtonText }}
+            className={`px-4 py-2 ${addButtonRadius} font-medium bg-gray-900 text-white`}
+            style={{ backgroundColor: addButtonBg || undefined, color: addButtonText || undefined }}
           >
             Add
           </button>
@@ -811,18 +929,18 @@ const MenuItemCard = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleRemoveOne}
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold"
-              style={{ backgroundColor: quantityButtonBg, color: quantityButtonText }}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-gray-900 text-white"
+              style={{ backgroundColor: quantityButtonBg || undefined, color: quantityButtonText || undefined }}
             >
               −
             </button>
-            <span className="w-8 text-center font-semibold" style={{ color: quantityTextColor }}>
+            <span className="w-8 text-center font-semibold text-gray-900" style={{ color: quantityTextColor || undefined }}>
               {quantity}
             </span>
             <button
               onClick={handleAddToCart}
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold"
-              style={{ backgroundColor: quantityButtonBg, color: quantityButtonText }}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-gray-900 text-white"
+              style={{ backgroundColor: quantityButtonBg || undefined, color: quantityButtonText || undefined }}
             >
               +
             </button>
@@ -831,21 +949,29 @@ const MenuItemCard = ({
       </div>
 
       {showOptions && (variations.length > 0 || accompaniments.length > 0) && (
-        <div className="mt-4 pt-4 border-t space-y-4">
+        <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
           {/* Variations */}
           {variations.length > 0 && (
             <div>
-              <p className="font-medium mb-2">Size</p>
+              <p className="font-medium mb-2 text-gray-900">Size</p>
               <div className="space-y-2">
                 {variations.map((variation) => (
                   <label key={variation.id} className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="radio"
+                      type="checkbox"
                       checked={selectedVariation?.id === variation.id}
-                      onChange={() => setSelectedVariation(variation)}
-                      className="w-4 h-4"
+                      onChange={(e) => {
+                        // If checking this box, uncheck others and set this one
+                        // If unchecking, set to null
+                        if (e.target.checked) {
+                          setSelectedVariation(variation);
+                        } else if (selectedVariation?.id === variation.id) {
+                          setSelectedVariation(null);
+                        }
+                      }}
+                      className="w-4 h-4 accent-gray-900"
                     />
-                    <span>{variation.name} ({formatPrice(variation.price_modifier)})</span>
+                    <span className="text-gray-800">{variation.name} ({formatPrice(variation.price_modifier)})</span>
                   </label>
                 ))}
               </div>
@@ -855,7 +981,7 @@ const MenuItemCard = ({
           {/* Accompaniments */}
           {accompaniments.length > 0 && (
             <div>
-              <p className="font-medium mb-2">Add-ons</p>
+              <p className="font-medium mb-2 text-gray-900">Add-ons</p>
               <div className="space-y-2">
                 {accompaniments.map((accompaniment) => (
                   <label key={accompaniment.id} className="flex items-center gap-2 cursor-pointer">
@@ -869,9 +995,9 @@ const MenuItemCard = ({
                           setSelectedAccompaniments(selectedAccompaniments.filter(a => a.id !== accompaniment.id));
                         }
                       }}
-                      className="w-4 h-4"
+                      className="w-4 h-4 accent-gray-900"
                     />
-                    <span>{accompaniment.name} (+{formatPrice(accompaniment.price)})</span>
+                    <span className="text-gray-800">{accompaniment.name} (+{formatPrice(accompaniment.price)})</span>
                   </label>
                 ))}
               </div>
@@ -883,8 +1009,8 @@ const MenuItemCard = ({
               handleAddToCart();
               setShowOptions(false);
             }}
-            className={`w-full py-2 ${addButtonRadius} font-medium`}
-            style={{ backgroundColor: addButtonBg, color: addButtonText }}
+            className={`w-full py-2 ${addButtonRadius} font-medium bg-gray-900 text-white`}
+            style={{ backgroundColor: addButtonBg || undefined, color: addButtonText || undefined }}
           >
             Add to Cart - {formatPrice(totalPrice)}
           </button>

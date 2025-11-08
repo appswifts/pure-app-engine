@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Edge Functions Safety Check
+# This prevents common 401 authentication errors
+
+echo "🔍 Checking for Edge Function anti-patterns..."
+
+# Check for manual fetch() calls to Edge Functions
+FETCH_PATTERN='fetch.*supabase.*functions/v1'
+if git diff --cached | grep -E "$FETCH_PATTERN" > /dev/null; then
+  echo ""
+  echo "❌ ERROR: Manual fetch() to Edge Functions detected!"
+  echo ""
+  echo "Please use supabase.functions.invoke() instead:"
+  echo ""
+  echo "  ❌ Bad:  fetch(\`\${SUPABASE_URL}/functions/v1/...\`)"
+  echo "  ✅ Good: supabase.functions.invoke('function-name', { body: {...} })"
+  echo ""
+  echo "See EDGE_FUNCTIONS_GUIDE.md for details."
+  echo ""
+  exit 1
+fi
+
+# Check for hardcoded Authorization headers to Edge Functions
+AUTH_PATTERN='Authorization.*Bearer.*SUPABASE'
+if git diff --cached | grep -E "$AUTH_PATTERN" > /dev/null; then
+  echo ""
+  echo "⚠️  WARNING: Hardcoded Authorization header detected!"
+  echo ""
+  echo "Consider using supabase.functions.invoke() which handles auth automatically."
+  echo ""
+fi
+
+echo "✅ Edge Functions check passed!"

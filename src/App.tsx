@@ -40,6 +40,7 @@ import {
   ProtectedRoute,
   AdminProtectedRoute,
 } from "./components/ProtectedRoute";
+import { LoadingDebugPanel } from "./components/LoadingDebugPanel";
 
 import { createOptimizedQueryClient } from "@/lib/queryOptimization";
 
@@ -73,6 +74,7 @@ const App = () => {
                 <TooltipProvider delayDuration={0}>
                   <Toaster />
                   <Sonner />
+                  <LoadingDebugPanel />
                   <BrowserRouter>
                   <Routes>
                     {/* Public Routes */}

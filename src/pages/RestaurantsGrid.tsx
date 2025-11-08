@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Store, Settings, QrCode, ExternalLink, Trash2 } from "lucide-react";
+import { Plus, Store, Settings, QrCode, ExternalLink, Trash2, Pencil } from "lucide-react";
+import { LoadingTracker } from "@/utils/debugUtils";
 
 interface Restaurant {
   id: string;
@@ -25,6 +26,9 @@ const RestaurantsGrid = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
+  const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   const [creating, setCreating] = useState(false);
   const [newRestaurant, setNewRestaurant] = useState({
     name: "",
@@ -45,6 +49,7 @@ const RestaurantsGrid = () => {
   const loadRestaurants = async () => {
     if (!user) return;
 
+    LoadingTracker.startLoading('RestaurantsGrid');
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -55,7 +60,9 @@ const RestaurantsGrid = () => {
 
       if (error) throw error;
       setRestaurants(data || []);
+      LoadingTracker.endLoading('RestaurantsGrid', true);
     } catch (error: any) {
+      LoadingTracker.endLoading('RestaurantsGrid', false);
       toast({
         title: "Error",
         description: "Failed to load restaurants",
@@ -114,16 +121,76 @@ const RestaurantsGrid = () => {
     navigate(`/dashboard/restaurant/${restaurant.slug}`);
   };
 
-  const handleDeleteRestaurant = async (restaurantId: string, restaurantName: string) => {
-    if (!confirm(`Are you sure you want to delete "${restaurantName}"? This action cannot be undone.`)) {
-      return;
+  const handleOpenEditDialog = (restaurant: Restaurant) => {
+    setEditingRestaurant(restaurant);
+    setNewRestaurant({
+      name: restaurant.name,
+      email: restaurant.email || "",
+      phone: restaurant.phone || "",
+    });
+    setIsEditMode(true);
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsCreateDialogOpen(false);
+    setIsEditMode(false);
+    setEditingRestaurant(null);
+    setNewRestaurant({ name: "", email: "", phone: "" });
+  };
+
+  const handleUpdateRestaurant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRestaurant) return;
+
+    try {
+      setCreating(true);
+
+      // Generate slug from name
+      const slug = newRestaurant.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+      const { error } = await supabase
+        .from("restaurants")
+        .update({
+          name: newRestaurant.name,
+          email: newRestaurant.email,
+          phone: newRestaurant.phone,
+          whatsapp_number: newRestaurant.phone || "",
+          slug: slug,
+        })
+        .eq("id", editingRestaurant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Restaurant updated successfully",
+      });
+
+      handleCloseDialog();
+      loadRestaurants();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update restaurant",
+        variant: "destructive",
+      });
+    } finally {
+      setCreating(false);
     }
+  };
+
+  const handleDeleteRestaurant = async () => {
+    if (!restaurantToDelete) return;
 
     try {
       const { error } = await supabase
         .from("restaurants")
         .delete()
-        .eq("id", restaurantId);
+        .eq("id", restaurantToDelete.id);
 
       if (error) throw error;
 
@@ -132,6 +199,7 @@ const RestaurantsGrid = () => {
         description: "Restaurant deleted successfully",
       });
 
+      setRestaurantToDelete(null);
       loadRestaurants();
     } catch (error: any) {
       toast({
@@ -176,11 +244,11 @@ const RestaurantsGrid = () => {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <form onSubmit={handleCreateRestaurant}>
+              <form onSubmit={isEditMode ? handleUpdateRestaurant : handleCreateRestaurant}>
                 <DialogHeader>
-                  <DialogTitle>Create New Restaurant</DialogTitle>
+                  <DialogTitle>{isEditMode ? "Edit Restaurant" : "Create New Restaurant"}</DialogTitle>
                   <DialogDescription>
-                    Add a new restaurant to your account
+                    {isEditMode ? "Update your restaurant details" : "Add a new restaurant to your account"}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -225,12 +293,15 @@ const RestaurantsGrid = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsCreateDialogOpen(false)}
+                    onClick={handleCloseDialog}
                   >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={creating || !newRestaurant.name}>
-                    {creating ? "Creating..." : "Create Restaurant"}
+                    {creating 
+                      ? (isEditMode ? "Updating..." : "Creating...") 
+                      : (isEditMode ? "Update Restaurant" : "Create Restaurant")
+                    }
                   </Button>
                 </DialogFooter>
               </form>
@@ -297,35 +368,69 @@ const RestaurantsGrid = () => {
                     </p>
                   )}
 
-                  <div className="flex gap-2 pt-4">
+                  <div className="space-y-2 pt-4">
                     <Button
                       size="sm"
-                      className="flex-1"
+                      className="w-full"
                       onClick={() => selectRestaurant(restaurant)}
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Manage
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(`/menu/${restaurant.slug}/table1`, "_blank")}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteRestaurant(restaurant.id, restaurant.name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenEditDialog(restaurant)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(`/menu/${restaurant.slug}/table1`, "_blank")}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setRestaurantToDelete(restaurant)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!restaurantToDelete} onOpenChange={(open) => !open && setRestaurantToDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Restaurant</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{restaurantToDelete?.name}"? This action cannot be undone.
+                All menu groups, items, and QR codes will be permanently deleted.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRestaurantToDelete(null)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteRestaurant}
+              >
+                Delete Restaurant
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ModernDashboardLayout>
   );

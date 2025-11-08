@@ -17,6 +17,7 @@ import ErrorFallback from "@/components/ErrorFallback";
 import { RestaurantLoadingSkeleton } from "@/components/RestaurantLoadingSkeleton";
 import RestaurantErrorBoundary from "@/components/RestaurantErrorBoundary";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
+import { LoadingTracker, logError } from '@/utils/debugUtils';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -52,6 +53,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const getUser = async () => {
+      LoadingTracker.startLoading('Dashboard');
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -97,9 +99,12 @@ const Dashboard = () => {
         }
 
         setLoading(false);
+        LoadingTracker.endLoading('Dashboard', true);
       } catch (err: any) {
         handleError(err);
         setLoading(false);
+        LoadingTracker.endLoading('Dashboard', false);
+        logError('Dashboard', err);
       }
     };
 

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AIImageGeneratorProps {
   onImageGenerated: (imageUrl: string) => void;
@@ -30,35 +31,18 @@ export function AIImageGenerator({ onImageGenerated, itemName }: AIImageGenerato
     setGeneratedImage(null);
 
     try {
-      // Call Supabase Edge Function to avoid CORS issues
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        throw new Error("Supabase configuration not found. Please check your .env file");
+      // IMPORTANT: Always use supabase.functions.invoke() for Edge Functions
+      // Never use manual fetch() - it causes 401 errors
+      // See EDGE_FUNCTIONS_GUIDE.md for details
+      const { data, error } = await supabase.functions.invoke('generate-food-image', {
+        body: { prompt },
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to generate image");
       }
 
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/generate-food-image`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ prompt }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(error.error || "Failed to generate image");
-      }
-
-      // Response contains the base64 image URL
-      const data = await response.json();
-      
-      if (!data.imageUrl) {
+      if (!data?.imageUrl) {
         throw new Error("No image URL in response");
       }
       

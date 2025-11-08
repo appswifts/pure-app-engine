@@ -105,8 +105,14 @@ async function cacheFirstStrategy(request, cacheName) {
     // Not in cache, fetch from network
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+    // Only cache valid, same-origin or CORS-enabled responses
+    if (networkResponse.ok && isCacheable(networkResponse)) {
+      try {
+        cache.put(request, networkResponse.clone());
+      } catch (error) {
+        // Silently fail cache.put() errors (e.g., opaque responses)
+        console.warn('Failed to cache:', request.url, error.message);
+      }
     }
     
     return networkResponse;
@@ -129,9 +135,15 @@ async function networkFirstStrategy(request, cacheName) {
     
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
+    // Only cache valid, same-origin or CORS-enabled responses
+    if (networkResponse.ok && isCacheable(networkResponse)) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      try {
+        cache.put(request, networkResponse.clone());
+      } catch (error) {
+        // Silently fail cache.put() errors (e.g., opaque responses)
+        console.warn('Failed to cache:', request.url, error.message);
+      }
     }
     
     return networkResponse;
@@ -162,12 +174,38 @@ async function updateCacheInBackground(request, cache) {
     }
     
     const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+    if (networkResponse.ok && isCacheable(networkResponse)) {
+      try {
+        cache.put(request, networkResponse.clone());
+      } catch (error) {
+        // Silently fail cache.put() errors
+        console.warn('Failed to update cache:', request.url, error.message);
+      }
     }
   } catch (error) {
     // Silently fail background updates
   }
+}
+
+// Helper function to check if a response can be cached
+function isCacheable(response) {
+  // Don't cache opaque responses (cross-origin requests without CORS)
+  if (response.type === 'opaque') {
+    return false;
+  }
+  
+  // Don't cache error responses
+  if (!response.ok) {
+    return false;
+  }
+  
+  // Don't cache POST responses
+  if (response.status === 206) {
+    return false;
+  }
+  
+  // Cache successful responses with proper headers
+  return true;
 }
 
 // Handle background sync for offline actions

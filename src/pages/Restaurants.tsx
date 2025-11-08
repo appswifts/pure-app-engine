@@ -17,6 +17,7 @@ import {
   Mail,
   Save
 } from "lucide-react";
+import { LoadingTracker } from "@/utils/debugUtils";
 
 interface RestaurantData {
   name: string;
@@ -50,6 +51,7 @@ const Restaurants = () => {
       return;
     }
 
+    LoadingTracker.startLoading('Restaurants');
     try {
       console.log('Loading restaurant data for user:', user.id);
       

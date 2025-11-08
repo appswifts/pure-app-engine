@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,39 +56,26 @@ export default function MenuGroupManagement() {
     description: "",
   });
 
-  useEffect(() => {
-    // Support both URL patterns:
-    // Old: /dashboard/restaurant/:slug/group/:groupSlug
-    // New: /dashboard/menu-groups/:slug (where slug is groupSlug)
-    if (restaurantSlug && groupSlug) {
-      loadData();
-    } else if (groupSlug) {
-      // For new clean URL, groupSlug is the only slug param
-      loadData();
-    }
-  }, [restaurantSlug, groupSlug]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async (abortSignal?: AbortSignal) => {
     try {
       setLoading(true);
 
       let restaurantData: any = null;
       let groupData: any = null;
 
-      // Handle both URL patterns
+      // STEP 1: Load restaurant and menu group (optimized for both URL patterns)
       if (restaurantSlug && groupSlug) {
-        // Old URL: /dashboard/restaurant/:slug/group/:groupSlug
-        // Load restaurant by slug
+        // Old URL: Load both in parallel if possible
         const { data: restaurantDataBySlug, error: restaurantError } = await supabase
           .from("restaurants")
           .select("id, name, slug, logo_url")
           .eq("slug", restaurantSlug)
+          .abortSignal(abortSignal)
           .single();
 
         if (restaurantError) throw restaurantError;
         restaurantData = restaurantDataBySlug;
 
-        // Load menu group by slug AND restaurant_id
         const { data: groupDataBySlug, error: groupError } = await supabase
           .from("menu_groups")
           .select("*")
@@ -99,9 +86,6 @@ export default function MenuGroupManagement() {
         if (groupError) throw groupError;
         groupData = groupDataBySlug;
       } else if (groupSlug) {
-        // New clean URL: /dashboard/menu-groups/:slug
-        // NOTE: This assumes slugs are globally unique. If multiple groups have the same slug,
-        // this will take the first one. Consider using restaurant-scoped URLs instead.
         const { data: groupDataBySlug, error: groupError } = await supabase
           .from("menu_groups")
           .select("*")
@@ -116,7 +100,6 @@ export default function MenuGroupManagement() {
         
         groupData = groupDataBySlug[0];
 
-        // Load restaurant by ID from menu group
         const { data: restaurantDataById, error: restaurantError } = await supabase
           .from("restaurants")
           .select("id, name, slug, logo_url")
@@ -127,86 +110,225 @@ export default function MenuGroupManagement() {
         restaurantData = restaurantDataById;
       }
 
-      setRestaurant(restaurantData);
-      setMenuGroup(groupData);
-
-      // Load categories for this menu group
-      const { data: categoriesData, error: categoriesError } = await supabase
+      // STEP 2: Load categories
+      const categoriesResult = await supabase
         .from("categories")
         .select("*")
         .eq("menu_group_id", groupData.id)
         .order("display_order", { ascending: true });
 
-      if (categoriesError) throw categoriesError;
-      setCategories(categoriesData || []);
+      if (categoriesResult.error) throw categoriesResult.error;
+      const categoriesData = categoriesResult.data || [];
+      
+      // Get category IDs from the categories data
+      const categoryIds = categoriesData.map(c => c.id);
+      
+      if (categoryIds.length === 0) {
+        setRestaurant(restaurantData);
+        setMenuGroup(groupData);
+        setCategories(categoriesData);
+        setItems([]);
+        setLoading(false);
+        return;
+      }
 
-      // Load items for this menu group
-      await fetchItems();
+      // STEP 3: Fetch items first
+      const itemsResult = await supabase
+        .from("menu_items")
+        .select("*")
+        .in("category_id", categoryIds)
+        .eq("restaurant_id", restaurantData.id)
+        .order("display_order", { ascending: true});
+
+      if (itemsResult.error) throw itemsResult.error;
+      const itemsData = itemsResult.data || [];
+      console.log('✅ Items fetched:', itemsData.length, 'items');
+
+      if (itemsData.length === 0) {
+        console.log('⚠️ No items found, returning early');
+        setRestaurant(restaurantData);
+        setMenuGroup(groupData);
+        setCategories(categoriesData);
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get item IDs to fetch variations and accompaniments
+      const itemIds = itemsData.map(item => item.id);
+      console.log('📦 Fetching variations & accompaniments for', itemIds.length, 'items');
+
+      // Fetch variations and accompaniments sequentially  
+      let variationsData: any[] = [];
+      let variationsError: any = null;
+      
+      // Batch fetch variations to avoid TypeScript deep instantiation issue
+      if (itemIds.length > 0) {
+        const result = await (supabase as any)
+          .from("item_variations")
+          .select("*")
+          .in("menu_item_id", itemIds);
+        variationsData = result.data || [];
+        variationsError = result.error;
+      }
+      
+      const { data: accompanimentsData, error: accompanimentsError } = await supabase
+        .from("accompaniments")
+        .select("*")
+        .eq("restaurant_id", restaurantData.id);
+
+      if (variationsError) console.warn('Variations error:', variationsError);
+      if (accompanimentsError) console.warn('Accompaniments error:', accompanimentsError);
+
+      const finalVariationsData: any[] = variationsData || [];
+      const finalAccompanimentsData: any[] = accompanimentsData || [];
+
+      // STEP 4: Combine data efficiently using Maps for O(1) lookups
+      const variationsMap = new Map<string, any[]>();
+      finalVariationsData.forEach((v: any) => {
+        if (!variationsMap.has(v.menu_item_id)) {
+          variationsMap.set(v.menu_item_id, []);
+        }
+        variationsMap.get(v.menu_item_id)!.push(v);
+      });
+
+      const accompanimentsMap = new Map<string, any[]>();
+      finalAccompanimentsData.forEach((a: any) => {
+        if (!accompanimentsMap.has(a.menu_item_id)) {
+          accompanimentsMap.set(a.menu_item_id, []);
+        }
+        accompanimentsMap.get(a.menu_item_id)!.push(a);
+      });
+
+      const itemsWithRelations = itemsData.map((item: any) => ({
+        ...item,
+        item_variations: variationsMap.get(item.id) || [],
+        accompaniments: accompanimentsMap.get(item.id) || [],
+      }));
+
+      // Update all state at once
+      setRestaurant(restaurantData);
+      setMenuGroup(groupData);
+      setCategories(categoriesData);
+      setItems(itemsWithRelations);
+      setLoading(false); // Set loading to false on success
     } catch (error: any) {
+      // Ignore abort errors (from React StrictMode cleanup)
+      if (error.message?.includes('AbortError') || error.code === '20') {
+        return;
+      }
       console.error("Error loading data:", error);
       toast({
         title: "Error loading data",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      setLoading(false); // Also set loading to false on error
     }
-  };
+  }, [restaurantSlug, groupSlug]);
 
-  const fetchItems = async () => {
+  useEffect(() => {
+    const abortController = new AbortController();
+    let isMounted = true;
+    
+    const load = async () => {
+      // Support both URL patterns:
+      // Old: /dashboard/restaurant/:slug/group/:groupSlug
+      // New: /dashboard/menu-groups/:slug (where slug is groupSlug)
+      if (restaurantSlug && groupSlug) {
+        if (isMounted) await loadData(abortController.signal);
+      } else if (groupSlug) {
+        // For new clean URL, groupSlug is the only slug param
+        if (isMounted) await loadData(abortController.signal);
+      } else {
+        if (isMounted) setLoading(false);
+      }
+    };
+    
+    load().catch(err => {
+      if (err.name === 'AbortError') {
+        return;
+      }
+      if (isMounted) setLoading(false);
+    });
+    
+    return () => {
+      abortController.abort();
+      isMounted = false;
+    };
+  }, [restaurantSlug, groupSlug, loadData]);
+
+  const fetchItems = useCallback(async () => {
     try {
-      // Get category IDs for this menu group
-      const categoryIds = categories.map(c => c.id);
-      
-      if (categoryIds.length === 0) {
+      if (!restaurant?.id || categories.length === 0) {
         setItems([]);
         return;
       }
 
-      // Fetch menu items for these categories
-      let itemsQuery = supabase
+      const categoryIds = categories.map(c => c.id);
+
+      // Fetch items first
+      const itemsQueryResult = await supabase
         .from("menu_items")
         .select("*")
         .in("category_id", categoryIds)
-        .eq("restaurant_id", restaurant?.id)
+        .eq("restaurant_id", restaurant.id)
         .order("display_order", { ascending: true });
 
-      if (selectedCategory !== "all") {
-        itemsQuery = itemsQuery.eq("category_id", selectedCategory);
-      }
+      if (itemsQueryResult.error) throw itemsQueryResult.error;
+      const itemsData = itemsQueryResult.data || [];
 
-      const { data: itemsData, error: itemsError } = await itemsQuery;
-
-      if (itemsError) throw itemsError;
-
-      if (!itemsData || itemsData.length === 0) {
+      if (itemsData.length === 0) {
         setItems([]);
         return;
       }
 
-      // Fetch variations for these items
+      // Get item IDs to fetch variations and accompaniments
       const itemIds = itemsData.map(item => item.id);
-      
-      const { data: variationsData } = await supabase
-        .from("item_variations")
-        .select("*")
-        .in("menu_item_id", itemIds);
 
-      // Fetch accompaniments for these items
-      const { data: accompanimentsData } = await supabase
-        .from("accompaniments")
-        .select("*")
-        .in("menu_item_id", itemIds);
+      // Fetch variations and accompaniments in PARALLEL
+      const [variationsQueryResult, accompanimentsQueryResult] = await Promise.all([
+        supabase
+          .from("item_variations")
+          .select("*")
+          .in("menu_item_id", itemIds),
+        
+        supabase
+          .from("accompaniments")
+          .select("*")
+          .eq("restaurant_id", restaurant.id)
+      ]);
 
-      // Combine the data
-      const itemsWithRelations = itemsData.map(item => ({
+      if (variationsQueryResult.error) console.warn('Variations error:', variationsQueryResult.error);
+      if (accompanimentsQueryResult.error) console.warn('Accompaniments error:', accompanimentsQueryResult.error);
+
+      const variationsData = variationsQueryResult.data || [];
+      const accompanimentsData = accompanimentsQueryResult.data || [];
+
+      // Use Maps for O(1) lookups
+      const variationsMap = new Map<string, any[]>();
+      variationsData.forEach((v: any) => {
+        if (!variationsMap.has(v.menu_item_id)) {
+          variationsMap.set(v.menu_item_id, []);
+        }
+        variationsMap.get(v.menu_item_id)!.push(v);
+      });
+
+      const accompanimentsMap = new Map<string, any[]>();
+      accompanimentsData.forEach((a: any) => {
+        if (!accompanimentsMap.has(a.menu_item_id)) {
+          accompanimentsMap.set(a.menu_item_id, []);
+        }
+        accompanimentsMap.get(a.menu_item_id)!.push(a);
+      });
+
+      const itemsWithRelations = itemsData.map((item: any) => ({
         ...item,
-        item_variations: variationsData?.filter(v => v.menu_item_id === item.id) || [],
-        accompaniments: accompanimentsData?.filter(a => a.menu_item_id === item.id) || [],
+        item_variations: variationsMap.get(item.id) || [],
+        accompaniments: accompanimentsMap.get(item.id) || [],
       }));
 
-      setItems(itemsWithRelations as any);
+      setItems(itemsWithRelations);
     } catch (error: any) {
       console.error("Error fetching items:", error);
       toast({
@@ -215,13 +337,15 @@ export default function MenuGroupManagement() {
         variant: "destructive",
       });
     }
-  };
+  }, [restaurant?.id, categories]);
 
-  useEffect(() => {
-    if (menuGroup && restaurant && categories.length > 0) {
-      fetchItems();
+  // Memoize filtered items based on selected category (client-side filtering for instant response)
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === "all") {
+      return items;
     }
-  }, [selectedCategory, menuGroup, restaurant, categories]);
+    return items.filter(item => item.category_id === selectedCategory);
+  }, [items, selectedCategory]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-RW", {
@@ -463,7 +587,14 @@ export default function MenuGroupManagement() {
         </Card>
 
         {/* Menu Items Grid */}
-        {items.length === 0 ? (
+        {loading ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Loading menu items...</p>
+            </CardContent>
+          </Card>
+        ) : filteredItems.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <UtensilsCrossed className="h-12 w-12 text-muted-foreground mb-4" />
@@ -481,7 +612,7 @@ export default function MenuGroupManagement() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <MenuItemCard
                 key={item.id}
                 id={item.id}

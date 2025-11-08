@@ -906,45 +906,27 @@ export const generateFoodImage = async (
     
     console.log('Generating image with prompt:', prompt);
     
-    // Call Supabase Edge Function to avoid CORS issues
-    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-    const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Supabase configuration not found');
-      return '';
-    }
-    
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/generate-food-image`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ prompt }),
-      }
-    );
+    // IMPORTANT: Always use supabase.functions.invoke() for Edge Functions
+    // Never use manual fetch() - it causes 401 errors
+    // See EDGE_FUNCTIONS_GUIDE.md for details
+    const { data, error } = await supabase.functions.invoke('generate-food-image', {
+      body: { prompt },
+    });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('Image generation failed:', response.status, errorData);
+    if (error) {
+      console.error('Image generation failed:', error);
       
-      // If model is loading, wait and retry once
-      if (response.status === 503) {
+      // If model is loading (503), wait and retry once
+      if (error.message?.includes('503')) {
         console.log('Model is loading, waiting 10 seconds...');
         await new Promise(resolve => setTimeout(resolve, 10000));
         return generateFoodImage(itemName, description);
       }
       
-      throw new Error(`Image generation failed: ${errorData.error || response.status}`);
+      throw new Error(`Image generation failed: ${error.message}`);
     }
 
-    // Response contains the base64 image URL
-    const data = await response.json();
-    
-    if (!data.imageUrl) {
+    if (!data?.imageUrl) {
       throw new Error('No image URL in response');
     }
     
