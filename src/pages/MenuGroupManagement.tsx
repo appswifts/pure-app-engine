@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Breadcrumbs, HomeBreadcrumb } from "@/components/ui/breadcrumbs";
 import { MenuItemCard } from "@/components/ui/menu-item-card";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
-import { Store, UtensilsCrossed, FolderTree, Plus, Sparkles } from "lucide-react";
+import { Store, UtensilsCrossed, FolderTree, Plus, Sparkles, Search, Filter, X } from "lucide-react";
 import { AIImageGenerator } from "@/components/menu/AIImageGenerator";
 import type { Database } from "@/integrations/supabase/types";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
 type MenuItem = Tables<"menu_items"> & {
@@ -56,6 +58,21 @@ export default function MenuGroupManagement() {
     name: "",
     description: "",
   });
+  
+  // Filter and search states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "unavailable">("all");
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const loadStartTime = useRef<number>(0);
   
@@ -364,13 +381,63 @@ export default function MenuGroupManagement() {
     }
   }, [restaurant?.id, categories]);
 
-  // Memoize filtered items based on selected category (client-side filtering for instant response)
+  // Calculate min and max prices from items
+  const priceExtent = useMemo(() => {
+    if (items.length === 0) return { min: 0, max: 100000 };
+    const prices = items.map(item => item.base_price);
+    return {
+      min: Math.floor(Math.min(...prices)),
+      max: Math.ceil(Math.max(...prices))
+    };
+  }, [items]);
+
+  // Reset price range when items change
+  useEffect(() => {
+    setPriceRange([priceExtent.min, priceExtent.max]);
+  }, [priceExtent]);
+
+  // Memoize filtered items with all filters applied
   const filteredItems = useMemo(() => {
-    if (selectedCategory === "all") {
-      return items;
+    let filtered = items;
+
+    // Category filter
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(item => item.category_id === selectedCategory);
     }
-    return items.filter(item => item.category_id === selectedCategory);
-  }, [items, selectedCategory]);
+
+    // Search filter
+    if (debouncedSearch.trim()) {
+      const search = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(search) ||
+        item.description?.toLowerCase().includes(search)
+      );
+    }
+
+    // Availability filter
+    if (availabilityFilter !== "all") {
+      filtered = filtered.filter(item => 
+        availabilityFilter === "available" ? item.is_available : !item.is_available
+      );
+    }
+
+    // Price range filter
+    filtered = filtered.filter(item => 
+      item.base_price >= priceRange[0] && item.base_price <= priceRange[1]
+    );
+
+    return filtered;
+  }, [items, selectedCategory, debouncedSearch, availabilityFilter, priceRange]);
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setAvailabilityFilter("all");
+    setPriceRange([priceExtent.min, priceExtent.max]);
+  };
+
+  const hasActiveFilters = searchQuery || selectedCategory !== "all" || availabilityFilter !== "all" || 
+    priceRange[0] !== priceExtent.min || priceRange[1] !== priceExtent.max;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-RW", {
@@ -578,18 +645,112 @@ export default function MenuGroupManagement() {
           </div>
         </div>
 
-        {/* Category Filter */}
+        {/* Search and Filters */}
         <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2 flex-wrap">
+          <CardContent className="py-4 space-y-4">
+            {/* Search Bar */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search menu items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant={showFilters ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            {/* Advanced Filters */}
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                {/* Category Filter */}
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Availability Filter */}
+                <div className="space-y-2">
+                  <Label>Availability</Label>
+                  <Select value={availabilityFilter} onValueChange={(value: any) => setAvailabilityFilter(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Items</SelectItem>
+                      <SelectItem value="available">Available Only</SelectItem>
+                      <SelectItem value="unavailable">Unavailable Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Price Range Filter */}
+                <div className="space-y-2">
+                  <Label>
+                    Price Range: {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
+                  </Label>
+                  <Slider
+                    min={priceExtent.min}
+                    max={priceExtent.max}
+                    step={1000}
+                    value={priceRange}
+                    onValueChange={(value) => setPriceRange(value as [number, number])}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Quick Category Pills */}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+              <span className="text-sm text-muted-foreground">Quick filters:</span>
               <Button
                 variant={selectedCategory === "all" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSelectedCategory("all")}
               >
-                All Categories
+                All
               </Button>
-              {categories.map((category) => (
+              {categories.slice(0, 5).map((category) => (
                 <Button
                   key={category.id}
                   variant={selectedCategory === category.id ? "default" : "outline"}
@@ -599,10 +760,16 @@ export default function MenuGroupManagement() {
                   {category.name}
                 </Button>
               ))}
+              {categories.length > 5 && (
+                <span className="text-xs text-muted-foreground">
+                  +{categories.length - 5} more
+                </span>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowCategoryDialog(true)}
+                className="ml-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Category
@@ -623,21 +790,38 @@ export default function MenuGroupManagement() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <UtensilsCrossed className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No menu items yet</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {hasActiveFilters ? "No items match your filters" : "No menu items yet"}
+              </h3>
               <p className="text-muted-foreground text-center mb-4">
-                {selectedCategory === "all"
+                {hasActiveFilters
+                  ? "Try adjusting your search or filter criteria"
+                  : selectedCategory === "all"
                   ? "Add your first menu item to get started"
                   : "No items in this category yet"}
               </p>
-              <Button onClick={openAddItemDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add First Item
-              </Button>
+              {hasActiveFilters ? (
+                <Button onClick={clearAllFilters} variant="outline">
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              ) : (
+                <Button onClick={openAddItemDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Item
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">
+                Showing {filteredItems.length} of {items.length} items
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredItems.map((item) => (
               <MenuItemCard
                 key={item.id}
                 id={item.id}
@@ -655,8 +839,9 @@ export default function MenuGroupManagement() {
                 onRefresh={() => fetchItems()}
                 formatPrice={formatPrice}
               />
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Add/Edit Item Dialog */}

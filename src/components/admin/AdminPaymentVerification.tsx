@@ -240,7 +240,7 @@ export const AdminPaymentVerification: React.FC<Props> = ({ onUpdate }) => {
                 payments.reduce((sum, p) => sum + p.amount, 0),
                 payments[0]?.currency || 'RWF'
               )}
-            </CardContent>
+            </div>
           </CardContent>
         </Card>
         <Card>
