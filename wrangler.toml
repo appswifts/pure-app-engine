@@ -1,6 +1,0 @@
-name = "pure-app-engine"
-compatibility_date = "2024-11-08"
-pages_build_output_dir = "./dist"
-
-# Note: Headers and redirects are configured via _headers and _redirects files
-# Environment variables should be set in Cloudflare Pages dashboard

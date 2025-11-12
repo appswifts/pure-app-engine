@@ -1,19 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
     host: "::",
     port: 8080,
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
-  ].filter(Boolean),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -22,24 +19,14 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        format: 'es',
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks: undefined,
+        format: 'iife', // Use IIFE instead of ES modules
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
       },
     },
     assetsDir: 'assets',
-    sourcemap: mode === 'development',
-    target: 'esnext',
-    modulePreload: {
-      polyfill: true,
-    },
+    target: 'es2020',
+    modulePreload: false,
   },
-  esbuild: {
-    logOverride: { 'this-is-undefined-in-esm': 'silent' }
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', '@supabase/supabase-js', '@tanstack/react-query']
-  }
-}));
+});
