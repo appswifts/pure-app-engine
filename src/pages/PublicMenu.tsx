@@ -41,6 +41,13 @@ interface MenuGroup {
   name: string;
   description: string | null;
   is_active: boolean;
+  // Added properties
+  logo_url?: string;
+  payment_instructions?: string;
+  restaurant_id?: string;
+  display_order?: number;
+  created_at?: string;
+  updated_at?: string;
   // Base customization
   brand_color?: string;
   secondary_color?: string;
@@ -461,16 +468,71 @@ const PublicMenu = () => {
       return;
     }
 
-    let message = `*New Order from ${customerName}*\n\n`;
+    // Define interface for consolidated items
+    interface ConsolidatedItem {
+      name: string;
+      variation?: ItemVariation;
+      accompaniments: Accompaniment[];
+      quantity: number;
+      price: number;
+    }
+
+    // Group items by name to consolidate quantities
+    const consolidatedItems: Record<string, ConsolidatedItem> = {};
+    
     cart.forEach((item) => {
-      message += `• ${item.name}`;
-      if (item.variation) message += ` (${item.variation.name})`;
-      if (item.accompaniments.length > 0) {
-        message += `\n  Add-ons: ${item.accompaniments.map(a => a.name).join(", ")}`;
+      const itemKey = item.name + (item.variation ? `-${item.variation.name}` : '');
+      if (!consolidatedItems[itemKey]) {
+        consolidatedItems[itemKey] = {
+          name: item.name,
+          variation: item.variation,
+          accompaniments: item.accompaniments,
+          quantity: 1,
+          price: item.totalPrice
+        };
+      } else {
+        consolidatedItems[itemKey].quantity += 1;
+        consolidatedItems[itemKey].price += item.totalPrice;
       }
-      message += `\n  ${formatPrice(item.totalPrice)}\n`;
     });
-    message += `\n*Total: ${formatPrice(cart.reduce((sum, item) => sum + item.totalPrice, 0))}*`;
+
+    // Calculate total price
+    const totalPrice = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    // Start building the message
+    let message = `*New Order from ${customerName}*\n`;
+    
+    // Add table info if available
+    if (tableSlug || tableId) {
+      message += `*Table:* ${tableSlug || tableId}\n`;
+    }
+    
+    // Add group name if available
+    if (selectedMenuGroup) {
+      message += `*Menu:* ${selectedMenuGroup.name}\n`;
+    }
+    
+    message += `\n`;
+    
+    // Add items with quantities
+    Object.values(consolidatedItems).forEach((item) => {
+      message += `• ${item.name} x${item.quantity}`;
+      if (item.variation) message += ` (${item.variation.name})`;
+      message += ` — ${formatPrice(item.price)}\n`;
+      
+      // Add accompaniments indented
+      if (item.accompaniments.length > 0) {
+        message += `   Add-ons: ${item.accompaniments.map(a => a.name).join(", ")}\n`;
+      }
+    });
+    
+    message += `\n*Total: ${formatPrice(totalPrice)}*`;
+    
+    // Add payment instructions if available
+    const paymentInstructions = (selectedMenuGroup as any)?.payment_instructions;
+    if (paymentInstructions) {
+      message += `\n\n*Payment Options:*\n${paymentInstructions}`;
+    }
 
     const whatsappNumber = restaurant?.whatsapp_number?.replace(/[^0-9]/g, "");
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;

@@ -64,11 +64,18 @@ export default function RestaurantOverview() {
   useEffect(() => {
     if (slug) {
       loadRestaurantData();
+    } else {
+      // Redirect to restaurants page if no slug is provided
+      navigate('/restaurants');
     }
-  }, [slug]);
+  }, [slug, navigate]);
 
   const loadRestaurantData = async () => {
-    if (!slug) return;
+    if (!slug || slug === 'undefined') {
+      // Prevent API calls with invalid slug
+      navigate('/restaurants');
+      return;
+    }
 
     LoadingTracker.startLoading('RestaurantOverview');
     try {
