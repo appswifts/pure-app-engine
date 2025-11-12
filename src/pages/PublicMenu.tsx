@@ -485,8 +485,10 @@ const PublicMenu = () => {
     if (selectedMenuGroup && menuGroups.length > 0) {
       if (cat.menu_group_id && cat.menu_group_id !== selectedMenuGroup.id) return false;
     }
-    // Always show all categories, even if they have no items
-    return true;
+    
+    // Only show categories that have at least one menu item
+    const hasItems = menuItems.some(item => item.category_id === cat.id);
+    return hasItems;
   });
 
   const filteredItems = menuItems.filter(item => {
@@ -628,7 +630,7 @@ const PublicMenu = () => {
                         : (selectedMenuGroup?.category_button_text_color || '#374151')
                     }}
                   >
-                    All Categories
+                    All
                   </button>
                   
                   {filteredCategories.map((category) => {

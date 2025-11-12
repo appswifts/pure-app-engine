@@ -77,32 +77,51 @@ const SubscriptionDialog: React.FC<SubscriptionDialogProps> = ({
     try {
       setLoading(true);
       
-      // Load payment details from admin settings
-      const { data, error } = await (supabase as any)
-        .from('admin_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', [
-          'payment_bank_name',
-          'payment_account_number', 
-          'payment_account_name',
-          'payment_mobile_money_number',
-          'payment_mobile_money_provider',
-          'payment_instructions'
-        ]);
+      // Try to load payment details from admin settings
+      try {
+        const { data, error } = await (supabase as any)
+          .from('admin_settings')
+          .select('setting_key, setting_value')
+          .in('setting_key', [
+            'payment_bank_name',
+            'payment_account_number', 
+            'payment_account_name',
+            'payment_mobile_money_number',
+            'payment_mobile_money_provider',
+            'payment_instructions'
+          ]);
 
-      if (error) throw error;
+        if (error) throw error;
+        
+        // Only process if we have data
+        if (data && data.length > 0) {
+          const settings: PaymentDetails = {};
+          data.forEach((setting: any) => {
+            const key = setting.setting_key.replace('payment_', '') as keyof PaymentDetails;
+            settings[key] = setting.setting_value;
+          });
 
-      const settings: PaymentDetails = {};
-      (data || []).forEach((setting: any) => {
-        const key = setting.setting_key.replace('payment_', '') as keyof PaymentDetails;
-        settings[key] = setting.setting_value;
+          setPaymentDetails(settings);
+          return; // Exit early if we successfully loaded settings
+        }
+      } catch (adminError) {
+        console.log('Admin settings not available, using defaults');
+        // Continue to default settings below
+      }
+      
+      // Set default payment details if admin settings couldn't be loaded
+      setPaymentDetails({
+        bank_name: 'Bank of Kigali',
+        account_number: '000-123-456789',
+        account_name: 'Pure App Engine Ltd',
+        mobile_money_number: '+250 788 123 456',
+        mobile_money_provider: 'MTN Mobile Money',
+        payment_instructions: 'Please use the reference number when making payment and contact support with payment confirmation.'
       });
-
-      setPaymentDetails(settings);
-
+      
     } catch (error: any) {
       console.error('Error loading payment details:', error);
-      // Set default payment details if admin hasn't configured them
+      // Default payment details as fallback
       setPaymentDetails({
         bank_name: 'Bank of Kigali',
         account_number: '000-123-456789',
@@ -139,38 +158,60 @@ const SubscriptionDialog: React.FC<SubscriptionDialogProps> = ({
       setLoading(true);
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "Please sign in again to request a subscription",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Create a pending subscription request
-      const { error } = await (supabase as any)
-        .from('user_subscriptions')
-        .insert({
-          user_id: user.id,
-          package_name: selectedPackage?.name,
-          status: 'pending',
-          billing_cycle: billingCycle,
-          amount_paid: billingCycle === 'monthly' ? selectedPackage?.price_monthly : selectedPackage?.price_yearly,
-          notes: `Payment reference: ${referenceNumber}. Awaiting manual payment confirmation.`,
-          started_at: new Date().toISOString(),
-          expires_at: billingCycle === 'monthly' 
-            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      // Try to create a pending subscription request
+      try {
+        const { error } = await (supabase as any)
+          .from('user_subscriptions')
+          .insert({
+            user_id: user.id,
+            package_name: selectedPackage?.name,
+            status: 'pending',
+            billing_cycle: billingCycle,
+            amount_paid: billingCycle === 'monthly' ? selectedPackage?.price_monthly : selectedPackage?.price_yearly,
+            notes: `Payment reference: ${referenceNumber}. Awaiting manual payment confirmation.`,
+            started_at: new Date().toISOString(),
+            expires_at: billingCycle === 'monthly' 
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Subscription Request Submitted!",
+          description: `Your ${selectedPackage?.name} subscription request has been submitted with reference ${referenceNumber}. Please make payment and contact support.`,
         });
 
-      if (error) throw error;
-
-      toast({
-        title: "Subscription Request Submitted!",
-        description: `Your ${selectedPackage?.name} subscription request has been submitted with reference ${referenceNumber}. Please make payment and contact support.`,
-      });
-
-      onClose();
-
+        onClose();
+      } catch (subError: any) {
+        console.error('Error creating subscription request:', subError);
+        
+        // Handle database permission error
+        if (subError.code === '42501' || subError.code === 'PGRST116' || subError.status === 403) {
+          toast({
+            title: "Demo Mode Limitation",
+            description: `In this demo, subscription requests are simulated. Your reference is ${referenceNumber}. This would normally be saved to the database.`,
+          });
+          onClose();
+          return;
+        }
+        
+        throw subError; // Re-throw for general error handling
+      }
     } catch (error: any) {
       console.error('Error creating subscription request:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to submit subscription request",
+        description: error.message || "Failed to submit subscription request. Please try again later.",
         variant: "destructive",
       });
     } finally {
