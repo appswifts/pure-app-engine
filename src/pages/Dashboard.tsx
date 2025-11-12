@@ -7,9 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { User } from "@supabase/supabase-js";
 import MenuManager from "@/components/dashboard/MenuManager";
 import EnhancedItemManager from "@/components/dashboard/EnhancedItemManager";
-import EmbedCodeGenerator from "@/components/dashboard/EmbedCodeGenerator";
-import PaymentStatusAlert from "@/components/PaymentStatusAlert";
-import { simplePaymentAccessControl } from "@/services/simplePaymentAccessControl";
 import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { RestaurantLoader } from "@/utils/restaurantLoader";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
@@ -18,6 +15,7 @@ import { RestaurantLoadingSkeleton } from "@/components/RestaurantLoadingSkeleto
 import RestaurantErrorBoundary from "@/components/RestaurantErrorBoundary";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { LoadingTracker, logError } from '@/utils/debugUtils';
+import SubscriptionPackagesView from "@/components/dashboard/SubscriptionPackagesView";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,9 +36,6 @@ const Dashboard = () => {
     if (path === "/dashboard" || path === "/dashboard/overview") return "overview";
     if (path === "/dashboard/menu") return "menu";
     if (path === "/dashboard/ai-import") return "ai-import";
-    if (path === "/dashboard/embed") return "embed";
-    if (path === "/dashboard/subscription") return "subscription";
-    if (path === "/dashboard/settings") return "settings";
     return "overview";
   };
 
@@ -90,14 +85,6 @@ const Dashboard = () => {
           setRestaurant(restaurantData.restaurant);
         }
 
-        // Check payment access
-        if (restaurantData.restaurant) {
-          const access = await simplePaymentAccessControl.checkRestaurantAccessBySlug(
-            restaurantData.restaurant.slug
-          );
-          setAccessInfo(access);
-        }
-
         setLoading(false);
         LoadingTracker.endLoading('Dashboard', true);
       } catch (err: any) {
@@ -130,6 +117,8 @@ const Dashboard = () => {
     <RestaurantErrorBoundary>
       <ModernDashboardLayout>
         <div className="space-y-6">
+          {/* Profile Completion Banner removed */}
+
           {activeTab === "overview" && (
             <>
               <div>
@@ -141,17 +130,6 @@ const Dashboard = () => {
 
               {/* Diagnostic Panel - Temporary for debugging */}
               {!restaurant && <DiagnosticPanel />}
-
-              {/* Payment Status Alert */}
-              {accessInfo && !accessInfo.hasAccess && restaurant && (
-                <div className="mb-6">
-                  <PaymentStatusAlert
-                    accessInfo={accessInfo}
-                    restaurant={restaurant}
-                    onPaymentClick={() => navigate("/pricing")}
-                  />
-                </div>
-              )}
 
               {/* Welcome Card */}
               <Card>
@@ -178,11 +156,11 @@ const Dashboard = () => {
                   <Button onClick={() => navigate("/dashboard/qr")} variant="outline">
                     Tables & QR Codes
                   </Button>
-                  <Button onClick={() => navigate("/dashboard/embed")} variant="outline">
-                    View Public Menu
-                  </Button>
                 </CardContent>
               </Card>
+
+              {/* Subscription Packages */}
+              <SubscriptionPackagesView />
 
               {/* Getting Started Guide */}
               <Card>
@@ -257,57 +235,8 @@ const Dashboard = () => {
             </>
           )}
 
-          {activeTab === "embed" && (
-            <>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Embed Codes</h1>
-                <p className="text-muted-foreground">
-                  Generate embed codes to display your menu on any website.
-                </p>
-              </div>
-              {restaurant && <EmbedCodeGenerator restaurant={restaurant} />}
-            </>
-          )}
-
-          {activeTab === "subscription" && (
-            <>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Subscriptions</h1>
-                <p className="text-muted-foreground">
-                  Manage your subscription and billing information.
-                </p>
-              </div>
-              {user && restaurant && (
-                <div className="space-y-4">
-                  <PaymentStatusAlert
-                    accessInfo={accessInfo}
-                    restaurant={restaurant}
-                    onPaymentClick={() => navigate("/pricing")}
-                  />
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "settings" && (
-            <>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Restaurant Settings</h1>
-                <p className="text-muted-foreground">
-                  Configure your restaurant profile and preferences.
-                </p>
-              </div>
-              {user && restaurant && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-muted-foreground">
-                      Restaurant settings interface coming soon...
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          )}
+          {/* Embed tab removed */}
+          {/* Settings tab removed - RestaurantSettings page deleted */}
         </div>
       </ModernDashboardLayout>
     </RestaurantErrorBoundary>

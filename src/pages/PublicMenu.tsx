@@ -6,8 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, MessageCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import RestrictedMenuView from "@/components/RestrictedMenuView";
-import { simplePaymentAccessControl } from "@/services/simplePaymentAccessControl";
 import { SafeImage } from "@/components/ui/safe-image";
+import { supabaseCache } from "@/lib/supabaseCache";
 
 // ===== INTERFACES =====
 interface Restaurant {
@@ -31,6 +31,9 @@ interface Restaurant {
   whatsapp_button_color?: string;
   whatsapp_button_text_color?: string;
   whatsapp_button_text?: string;
+  subscription_status?: 'active' | 'pending' | 'expired' | 'cancelled';
+  subscription_end_date?: string;
+  is_menu_active?: boolean;
 }
 
 interface MenuGroup {
@@ -186,6 +189,7 @@ const PublicMenu = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [accessInfo, setAccessInfo] = useState<any>(null);
+  const [isGroupPreselected, setIsGroupPreselected] = useState(false);
 
   // ===== LOAD DATA =====
   useEffect(() => {
@@ -194,28 +198,95 @@ const PublicMenu = () => {
     }
   }, [restaurantSlug]);
 
+  // Reset category selection when menu group changes
+  useEffect(() => {
+    setSelectedCategory(null);
+  }, [selectedMenuGroup]);
+
   const loadMenuData = async () => {
     try {
       setLoading(true);
 
-      // Check access
-      const access = await simplePaymentAccessControl.checkRestaurantAccessBySlug(restaurantSlug!);
-      setAccessInfo(access);
+      // Load restaurant data
+      const { data: restaurantDataRaw, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('slug', restaurantSlug!)
+        .single();
 
-      if (!access.hasAccess || !access.restaurant) {
+      if (restaurantError || !restaurantDataRaw) {
+        console.error('Restaurant not found:', restaurantError);
         setLoading(false);
         return;
       }
 
-      setRestaurant(access.restaurant);
+      const restaurantData = restaurantDataRaw as any;
 
-      // Load menu groups
-      const { data: groupsData } = await supabase
-        .from("menu_groups")
-        .select("*")
-        .eq("restaurant_id", access.restaurant.id)
-        .eq("is_active", true)
-        .order("display_order");
+      // Load restaurant owner's subscription with package features
+      const { data: subscriptionData, error: subError } = await (supabase as any)
+        .from('user_subscriptions')
+        .select(`
+          *,
+          package:subscription_packages!user_subscriptions_package_name_fkey(
+            feature_public_menu_access,
+            feature_qr_codes,
+            feature_whatsapp_orders,
+            feature_analytics,
+            feature_custom_branding,
+            feature_priority_support,
+            feature_multiple_restaurants,
+            feature_api_access,
+            max_restaurants,
+            max_menu_items
+          )
+        `)
+        .eq('user_id', restaurantData.user_id)
+        .in('status', ['active', 'pending'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Check if subscription exists and allows menu access
+      const hasActiveSubscription = subscriptionData && (
+        subscriptionData.status === 'active' ||
+        subscriptionData.status === 'pending' ||
+        (
+          subscriptionData.status === 'expired' &&
+          subscriptionData.expires_at &&
+          new Date(subscriptionData.expires_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        )
+      );
+
+      const packageAllowsMenuAccess = subscriptionData?.package?.feature_public_menu_access === true;
+      
+      const isMenuAccessible = hasActiveSubscription && packageAllowsMenuAccess;
+
+      if (!isMenuAccessible) {
+        setRestaurant(restaurantData as Restaurant);
+        let message = 'This menu is currently unavailable.';
+        
+        if (!subscriptionData) {
+          message = 'The restaurant owner does not have an active subscription. Please contact them for more information.';
+        } else if (!packageAllowsMenuAccess) {
+          message = 'The restaurant owner\'s subscription plan does not include public menu access.';
+        } else if (!hasActiveSubscription) {
+          message = 'The restaurant owner\'s subscription has expired. Please ask them to renew their subscription.';
+        }
+        
+        setAccessInfo({ 
+          hasAccess: false, 
+          restaurant: restaurantData as Restaurant,
+          message
+        });
+        setLoading(false);
+        return;
+      }
+
+      setRestaurant(restaurantData as Restaurant);
+      setAccessInfo({ hasAccess: true, restaurant: restaurantData });
+
+      // Load menu groups (cached for 10 minutes)
+      const groupsData = await supabaseCache.getMenuGroups(restaurantData.id);
 
       if (groupsData) {
         setMenuGroups(groupsData);
@@ -228,49 +299,43 @@ const PublicMenu = () => {
           selectedGroup = groupsData.find(g => 
             g.name.toLowerCase() === groupParam.toLowerCase() || g.id === groupParam
           ) || groupsData[0] || null;
+          
+          // Mark that group was pre-selected from URL
+          console.log('Group pre-selected from URL param:', groupParam);
+          setIsGroupPreselected(true);
         } else if (groupsData.length === 1) {
           selectedGroup = groupsData[0];
-        } else if (groupsData.length > 1 && (tableSlug || tableId)) {
-          navigate(`/menu/${restaurantSlug}/${tableSlug || tableId}/select-group`);
-          return;
+        } else if (groupsData.length > 1) {
+          // If tableSlug exists, redirect to group selection
+          if (tableSlug || tableId) {
+            // Check if we're already on the select-group page
+            if(window.location.pathname.includes('/select-group')) {
+              // We're on select-group page, so set isGroupPreselected for when user selects a group
+              console.log('On select-group page, pre-selecting group:', selectedGroup?.name || 'none yet');
+              setIsGroupPreselected(true);
+            } else {
+              navigate(`/menu/${restaurantSlug}/${tableSlug || tableId}/select-group`);
+              return;
+            }
+          }
+          // For embed (no tableSlug), auto-select default or first group
+          selectedGroup = groupsData[0] || null;
         }
 
         setSelectedMenuGroup(selectedGroup);
       }
 
-      // Load categories
-      const { data: categoriesData } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("restaurant_id", access.restaurant.id)
-        .order("display_order");
+      // Load all data in parallel using cache (5-10 min caching)
+      const [categoriesData, itemsData, variationsData, accompanimentsData] = await Promise.all([
+        supabaseCache.getCategories(restaurantData.id),
+        supabaseCache.getMenuItems(restaurantData.id),
+        supabaseCache.getVariations(),
+        supabaseCache.getAccompaniments()
+      ]);
 
       setCategories(categoriesData || []);
-
-      // Load menu items
-      const { data: itemsData } = await supabase
-        .from("menu_items")
-        .select("*")
-        .eq("restaurant_id", access.restaurant.id)
-        .eq("is_available", true)
-        .order("display_order");
-
       setMenuItems(itemsData || []);
-
-      // Load variations
-      const { data: variationsData } = await supabase
-        .from("item_variations")
-        .select("*")
-        .order("display_order");
-
       setVariations(variationsData || []);
-
-      // Load accompaniments
-      const { data: accompanimentsData } = await supabase
-        .from("accompaniments")
-        .select("*")
-        .order("display_order");
-
       setAccompaniments(accompanimentsData || []);
 
     } catch (error: any) {
@@ -487,22 +552,21 @@ const PublicMenu = () => {
         <div className="text-center pt-12 pb-8">
           <div className="mb-6">
             <div 
-              className={`w-24 h-24 mx-auto mb-4 overflow-hidden ${
-                selectedMenuGroup?.logo_border_radius || 'rounded-full'
-              } ${selectedMenuGroup?.logo_show_border !== false ? 'border-4' : ''}`}
-              style={{ 
-                borderColor: selectedMenuGroup?.logo_border_color || brandColor || undefined,
-                borderWidth: selectedMenuGroup?.logo_border_width || '4px'
-              }}
+              className="w-20 h-20 rounded-full overflow-hidden border-4 mb-4 mx-auto" 
+              style={{ borderColor: brandColor || undefined }}
             >
-              {restaurant.logo_url ? (
-                <SafeImage src={restaurant.logo_url} alt={restaurant.name} className="w-full h-full object-cover" />
+              {(selectedMenuGroup?.logo_url || restaurant.logo_url) ? (
+                <SafeImage 
+                  src={selectedMenuGroup?.logo_url || restaurant.logo_url} 
+                  alt={selectedMenuGroup?.name || restaurant.name} 
+                  className="w-full h-full object-cover" 
+                />
               ) : (
                 <div 
                   className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gray-200 text-gray-700"
                   style={{ backgroundColor: brandColor || undefined }}
                 >
-                  {restaurant.name.charAt(0)}
+                  {(selectedMenuGroup?.name || restaurant.name).charAt(0)}
                 </div>
               )}
             </div>
@@ -517,6 +581,33 @@ const PublicMenu = () => {
             {restaurant.name}
           </h1>
         </div>
+
+        {/* Menu Group Selector - COMPLETELY DISABLED */}
+        {false && menuGroups.length > 1 && (
+          <div className="px-4 mb-4">
+            <div className="max-w-md mx-auto">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {menuGroups.map((group) => {
+                  const isActive = selectedMenuGroup?.id === group.id;
+                  return (
+                    <button
+                      key={group.id}
+                      onClick={() => setSelectedMenuGroup(group)}
+                      className={`px-6 py-2 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 rounded-lg border-2`}
+                      style={{
+                        backgroundColor: isActive ? (brandColor || '#3B82F6') : '#FFFFFF',
+                        color: isActive ? '#FFFFFF' : (brandColor || '#3B82F6'),
+                        borderColor: brandColor || '#3B82F6'
+                      }}
+                    >
+                      {group.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Category Navigation / Search */}
         <div className="px-4 mb-8">

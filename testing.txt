@@ -1,0 +1,1461 @@
+# Testing Checklist - Restaurant QR Menu System
+
+Test everything systematically. Check off each item as you verify it works.
+
+---
+
+## 1. USER REGISTRATION & ONBOARDING
+
+### Test New User Signup
+- [ ] Go to signup page
+- [ ] Fill in email, password, restaurant name, phone, location
+- [ ] Click "Sign Up"
+- [ ] Verify success message appears
+- [ ] Check email inbox for verification email (if applicable)
+- [ ] Verify user is created in database
+- [ ] Check user is redirected to package selection page
+
+### Test Duplicate Email
+- [ ] Try signing up with same email again
+- [ ] Verify error message: "Email already exists"
+
+### Test Validation
+- [ ] Try weak password - verify error
+- [ ] Try invalid email format - verify error
+- [ ] Try leaving required fields empty - verify errors
+
+---
+
+## 2. STRIPE PAYMENT (AUTOMATED)
+
+### Test Stripe Checkout
+- [ ] After signup, click "Pay with Card"
+- [ ] Verify redirected to Stripe checkout page
+- [ ] Check package details show correct price (10,000 RWF)
+- [ ] Use Stripe test card: `4242 4242 4242 4242`
+- [ ] Enter any future expiry date and any 3-digit CVC
+- [ ] Complete payment
+- [ ] Verify redirected back to dashboard
+
+### Test Subscription Activation
+- [ ] Check user dashboard shows "Active Subscription"
+- [ ] Check database: subscription status = "active"
+- [ ] Check database: payment method = "stripe"
+- [ ] Verify user received confirmation email
+- [ ] Check Stripe dashboard shows successful payment
+
+### Test Stripe Webhook
+- [ ] In Stripe dashboard, go to webhooks
+- [ ] Verify webhook endpoint is configured
+- [ ] Check webhook received `checkout.session.completed` event
+- [ ] Verify webhook response was 200 OK
+- [ ] Check application logs for webhook processing
+
+### Test Failed Stripe Payment
+- [ ] Use test card: `4000 0000 0000 0002` (card declined)
+- [ ] Verify payment fails
+- [ ] Check user subscription remains inactive
+- [ ] Verify user sees error message
+
+### Test Monthly Auto-Renewal (Simulated)
+- [ ] In database, set subscription's next_billing_date to yesterday
+- [ ] Trigger Stripe webhook manually or wait for cron job
+- [ ] Verify `invoice.payment_succeeded` webhook received
+- [ ] Check subscription extended by 1 month
+- [ ] Verify user still has access
+
+---
+
+## 3. MANUAL PAYMENT (ADMIN APPROVED)
+
+### Test Manual Payment Submission
+- [ ] After signup, click "Pay Manually"
+- [ ] Verify payment instructions appear (bank details, mobile money)
+- [ ] Upload fake payment receipt (screenshot or PDF)
+- [ ] Enter transaction reference: "TEST-MTN-123456"
+- [ ] Add note: "Paid via MTN Mobile Money"
+- [ ] Click "Submit Payment Proof"
+- [ ] Verify success message appears
+
+### Test Pending Status
+- [ ] Check user dashboard shows "Payment Pending Approval"
+- [ ] Check database: subscription status = "pending_payment"
+- [ ] Check database: payment status = "pending_verification"
+- [ ] Verify payment record has uploaded receipt URL
+- [ ] Verify user received "Payment submitted" email
+
+### Test Admin Sees Pending Payment
+- [ ] Login as admin
+- [ ] Go to "Pending Payments" section
+- [ ] Verify test payment appears in list
+- [ ] Check user name, email, amount, reference visible
+- [ ] Click "View Receipt" button
+- [ ] Verify receipt image/PDF opens
+
+### Test Admin Approves Payment
+- [ ] Click "Approve" button on pending payment
+- [ ] Verify confirmation prompt appears
+- [ ] Confirm approval
+- [ ] Check payment status changed to "verified"
+- [ ] Check subscription status changed to "active"
+- [ ] Verify user can now access dashboard features
+
+### Test User Gets Approval Notification
+- [ ] Check user's email inbox
+- [ ] Verify "Payment Approved" email received
+- [ ] Email should show: package name, start date, expiry date
+- [ ] User refreshes dashboard
+- [ ] Verify dashboard shows "Active Subscription"
+
+### Test Admin Rejects Payment
+- [ ] Create another manual payment submission
+- [ ] Admin clicks "Reject" button
+- [ ] Enter rejection reason: "Receipt is unclear, please resubmit"
+- [ ] Confirm rejection
+- [ ] Check payment status = "rejected"
+- [ ] Check subscription status = "payment_rejected"
+
+### Test User Gets Rejection Notification
+- [ ] Check user's email inbox
+- [ ] Verify "Payment Rejected" email received
+- [ ] Email should show rejection reason
+- [ ] User dashboard shows rejection message with reason
+- [ ] Verify user can submit new payment proof
+
+### Test Manual Payment Renewal Reminder
+- [ ] In database, set subscription's next_billing_date to 7 days from now
+- [ ] Run cron job or trigger reminder manually
+- [ ] Verify user receives "Renewal Reminder" email
+- [ ] Email should show days remaining and renewal link
+
+### Test Manual Payment Expiration
+- [ ] In database, set subscription's next_billing_date to yesterday
+- [ ] Run expiration check cron job
+- [ ] Check subscription status changed to "expired"
+- [ ] User tries to access features
+- [ ] Verify "Subscription Expired" message appears
+- [ ] Verify user sees "Renew Now" button
+
+---
+
+## 4. RESTAURANT SETUP
+
+### Test Add First Restaurant
+- [ ] Login as active user
+- [ ] Click "Add Restaurant" button
+- [ ] Fill in: name, logo upload, phone (WhatsApp), address
+- [ ] Click "Save Restaurant"
+- [ ] Verify restaurant created successfully
+- [ ] Check database: restaurant record exists
+- [ ] Check database: "Default Menu Group" auto-created
+
+### Test Multiple Restaurants (Package Dependent)
+- [ ] If user has Basic package (1 restaurant limit)
+- [ ] Try adding second restaurant
+- [ ] Verify error: "Upgrade to add more restaurants"
+- [ ] If user has Pro/Enterprise package
+- [ ] Add second restaurant successfully
+- [ ] Verify dashboard shows dropdown to switch restaurants
+
+### Test Restaurant Logo Upload
+- [ ] Upload image file (JPG/PNG)
+- [ ] Verify preview appears
+- [ ] Save restaurant
+- [ ] Refresh page
+- [ ] Verify logo displays correctly
+- [ ] Try uploading very large file (>5MB)
+- [ ] Verify error: "File too large"
+
+### Test WhatsApp Number Validation
+- [ ] Enter invalid phone format
+- [ ] Verify validation error
+- [ ] Enter valid format: "+250788123456"
+- [ ] Save successfully
+
+---
+
+## 5. MENU GROUPS
+
+### Test Create Menu Group
+- [ ] Click "Add Menu Group"
+- [ ] Enter name: "Chinese Menu"
+- [ ] Set availability: "All day" or custom hours
+- [ ] Click "Save"
+- [ ] Verify menu group appears in list
+- [ ] Check database: menu_group record created
+
+### Test Multiple Menu Groups
+- [ ] Create "Rwandan Menu"
+- [ ] Create "Drinks"
+- [ ] Create "Breakfast" with time: 6:00 AM - 11:00 AM
+- [ ] Verify all groups display in list
+- [ ] Check each can be edited/deleted
+
+### Test Default Menu Group
+- [ ] Verify "Default Menu Group" exists automatically
+- [ ] Try to delete it
+- [ ] Verify warning: "Cannot delete default group" (or allow deletion)
+
+### Test Menu Group Limit (Package Dependent)
+- [ ] If Basic package (1 menu group limit)
+- [ ] Try creating 2nd menu group
+- [ ] Verify error: "Upgrade for more menu groups"
+- [ ] If Pro package (10 groups)
+- [ ] Create 11th group
+- [ ] Verify error: "Maximum limit reached"
+
+---
+
+## 6. MENU ITEMS - MANUAL ENTRY
+
+### Test Add Menu Item
+- [ ] Click "Add Menu Item"
+- [ ] Fill in:
+  - Name: "Beef Brochette"
+  - Description: "Grilled beef skewers with vegetables"
+  - Price: 5000
+  - Upload food photo
+  - Select menu group: "Rwandan Menu"
+  - Mark as "Available"
+- [ ] Click "Save"
+- [ ] Verify item appears in menu list
+- [ ] Check database: menu_item record created
+
+### Test Menu Item Photo Upload
+- [ ] Upload JPG image
+- [ ] Verify preview appears
+- [ ] Save item
+- [ ] Verify photo displays in menu list
+- [ ] Try uploading non-image file
+- [ ] Verify error: "Only images allowed"
+
+### Test Menu Item Validation
+- [ ] Leave name empty - verify error
+- [ ] Enter negative price - verify error
+- [ ] Enter non-numeric price - verify error
+- [ ] Price with decimals (5000.50) - verify accepted
+
+### Test Edit Menu Item
+- [ ] Click "Edit" on existing item
+- [ ] Change price from 5000 to 6000
+- [ ] Change description
+- [ ] Save changes
+- [ ] Verify changes reflected immediately
+- [ ] Check database updated
+
+### Test Delete Menu Item
+- [ ] Click "Delete" on menu item
+- [ ] Verify confirmation prompt
+- [ ] Confirm deletion
+- [ ] Verify item removed from list
+- [ ] Check database: record deleted or soft-deleted
+
+### Test Mark Item as Unavailable
+- [ ] Click toggle to mark item "Sold Out"
+- [ ] Verify status changes to "Unavailable"
+- [ ] Later: check customer menu shows "Sold Out" badge
+
+### Test Menu Item Limit (Package Dependent)
+- [ ] If Basic package (50 items limit)
+- [ ] Create 51st item
+- [ ] Verify error: "Maximum items reached, upgrade package"
+
+---
+
+## 7. MENU ITEMS - AI IMPORT
+
+### Test AI Menu Upload
+- [ ] Click "Import Menu with AI"
+- [ ] Upload test menu PDF with clear text and prices
+- [ ] Verify upload progress shows
+- [ ] Wait for AI processing (10-30 seconds)
+- [ ] Verify preview screen appears
+
+### Test AI Extraction Accuracy
+- [ ] Check extracted items list
+- [ ] Verify item names extracted correctly
+- [ ] Verify prices extracted correctly
+- [ ] Verify descriptions extracted (if present)
+- [ ] Check for any missing items
+- [ ] Check for any wrong prices
+
+### Test Edit AI Results
+- [ ] Click "Edit" on extracted item
+- [ ] Fix wrong price or name
+- [ ] Save correction
+- [ ] Verify change saved in preview
+
+### Test Remove AI Extracted Items
+- [ ] Uncheck items you don't want to import
+- [ ] Verify they're excluded from import
+
+### Test Assign Menu Group
+- [ ] Select menu group for all items
+- [ ] Or assign different groups to different items
+- [ ] Click "Import All"
+- [ ] Verify import progress bar
+
+### Test AI Import Success
+- [ ] After import completes
+- [ ] Check all items appear in menu list
+- [ ] Verify photos imported (if AI extracted them)
+- [ ] Check database: all items created
+- [ ] Verify assigned to correct menu groups
+
+### Test AI Import Errors
+- [ ] Upload blurry/unreadable menu image
+- [ ] Verify AI returns error or low confidence warning
+- [ ] Upload non-menu document (random PDF)
+- [ ] Verify appropriate error message
+
+### Test AI Import Limit (Package Dependent)
+- [ ] If Basic package (no AI access)
+- [ ] Verify "Upgrade to use AI" message
+- [ ] If Pro package (10 imports/month)
+- [ ] Do 11th import
+- [ ] Verify error: "Monthly AI limit reached"
+
+---
+
+## 8. QR CODE GENERATION
+
+### Test Create Table QR Code
+- [ ] Click "Create QR Code"
+- [ ] Select type: "Table"
+- [ ] Enter table name: "Table 1"
+- [ ] Select restaurant
+- [ ] Select menu groups to show: "Rwandan Menu" only
+- [ ] Click "Generate"
+- [ ] Verify QR code appears
+- [ ] Check database: qr_code record created with settings
+
+### Test Create Room QR Code
+- [ ] Create QR for "Room 3"
+- [ ] Select multiple menu groups
+- [ ] Generate successfully
+
+### Test Create Restaurant QR Code
+- [ ] Select type: "Full Restaurant"
+- [ ] Shows all menu groups from one restaurant
+- [ ] Generate successfully
+
+### Test Multi-Restaurant QR Code
+- [ ] If user has multiple restaurants
+- [ ] Select type: "Multi-Restaurant"
+- [ ] Choose which restaurants to include
+- [ ] Generate successfully
+
+### Test QR Code Customization
+- [ ] Add restaurant logo to QR center
+- [ ] Change QR color
+- [ ] Preview changes
+- [ ] Generate final QR
+
+### Test Download QR Code
+- [ ] Click "Download as PNG"
+- [ ] Verify high-resolution PNG downloads
+- [ ] Click "Download as PDF"
+- [ ] Verify PDF downloads
+- [ ] Check file size is reasonable (<1MB)
+
+### Test QR Code List
+- [ ] View all created QR codes
+- [ ] Verify table/room names display
+- [ ] Check creation dates
+- [ ] Verify can edit QR settings
+- [ ] Verify can delete QR codes
+
+### Test QR Code Limit (Package Dependent)
+- [ ] If Basic package (5 QR codes)
+- [ ] Create 6th QR code
+- [ ] Verify error: "Maximum QR codes reached"
+
+### Test QR Code Analytics (if implemented)
+- [ ] Check if scan count tracking works
+- [ ] Scan QR code multiple times
+- [ ] Verify scan count increases
+
+---
+
+## 9. PRINT MENU PDF
+
+### Test Download Full Menu
+- [ ] Click "Download Menu PDF"
+- [ ] Select "Full Restaurant Menu"
+- [ ] Click "Generate PDF"
+- [ ] Verify PDF downloads
+- [ ] Open PDF
+- [ ] Check all menu items included
+- [ ] Verify photos display correctly
+- [ ] Check prices formatted correctly
+- [ ] Verify restaurant logo/header appears
+
+### Test Download Single Menu Group
+- [ ] Select "Single Menu Group"
+- [ ] Choose "Chinese Menu"
+- [ ] Generate PDF
+- [ ] Verify only Chinese menu items in PDF
+
+### Test Download Drinks Only
+- [ ] Select "Drinks" menu group
+- [ ] Generate PDF
+- [ ] Verify only drinks in PDF
+
+### Test PDF Formatting
+- [ ] Check PDF is print-ready (A4 size)
+- [ ] Verify text is readable
+- [ ] Check images not pixelated
+- [ ] Verify proper margins
+- [ ] Check page breaks don't split items awkwardly
+
+### Test PDF with No Images
+- [ ] Select option to exclude images
+- [ ] Generate PDF
+- [ ] Verify text-only menu (smaller file size)
+
+---
+
+## 10. CUSTOMER EXPERIENCE - SCANNING QR
+
+### Test QR Code Scan
+- [ ] Print QR code or display on screen
+- [ ] Use real phone to scan QR with camera app
+- [ ] Verify browser opens automatically
+- [ ] Check correct URL loads
+- [ ] Verify no app download required
+
+### Test Menu Display for Customer
+- [ ] Restaurant name displays at top
+- [ ] Logo appears
+- [ ] Menu groups show as tabs or sections
+- [ ] All items from scanned QR's groups visible
+- [ ] Photos load correctly
+- [ ] Prices display clearly
+- [ ] Item descriptions readable
+
+### Test Filter by Menu Group
+- [ ] If multiple groups, click "Chinese Menu" tab
+- [ ] Verify only Chinese items show
+- [ ] Click "Rwandan Menu" tab
+- [ ] Verify menu switches
+
+### Test Search Function
+- [ ] Type "beef" in search box
+- [ ] Verify only beef items show
+- [ ] Try searching by price range (if implemented)
+- [ ] Clear search, verify all items return
+
+### Test Sold Out Items
+- [ ] Items marked "unavailable" should show "Sold Out" badge
+- [ ] Verify customer cannot add sold-out items to cart
+- [ ] Or shows warning if attempted
+
+### Test Menu on Different Devices
+- [ ] Open on iPhone - verify displays correctly
+- [ ] Open on Android phone - verify displays correctly
+- [ ] Open on tablet - verify responsive design
+- [ ] Open on desktop browser - verify works
+
+---
+
+## 11. CUSTOMER ORDERING VIA WHATSAPP
+
+### Test Add Items to Cart
+- [ ] Click "+" button on menu item
+- [ ] Verify quantity increases
+- [ ] Verify item appears in cart
+- [ ] Click "+/-" to adjust quantity
+- [ ] Verify total price updates
+
+### Test Special Instructions
+- [ ] Add item to cart
+- [ ] Click "Add Note" or similar
+- [ ] Type: "Extra spicy, no onions"
+- [ ] Verify note saved with item
+
+### Test Cart Summary
+- [ ] Add multiple items
+- [ ] Verify cart shows all items
+- [ ] Check quantities correct
+- [ ] Verify subtotal calculates correctly
+- [ ] Check special requests display
+
+### Test Enter Customer Name
+- [ ] Proceed to order
+- [ ] Enter name: "John Doe"
+- [ ] Leave name empty - verify validation error
+
+### Test Order via WhatsApp Button
+- [ ] Click "Order via WhatsApp"
+- [ ] Verify WhatsApp opens automatically
+- [ ] Check message is pre-filled
+- [ ] Verify message contains:
+  - Restaurant name
+  - Table/room number
+  - Customer name
+  - All ordered items with quantities
+  - Prices per item
+  - Total price
+  - Special requests
+  - Timestamp
+
+### Test WhatsApp Message Format
+Expected format:
+```
+🍽️ NEW ORDER - Table 5
+
+Customer: John Doe
+
+2x Beef Brochette - 10,000 RWF
+1x Rice - 2,000 RWF
+3x Primus Beer - 6,000 RWF
+
+Special Request: Extra hot sauce
+
+Total: 18,000 RWF
+Time: 3:45 PM
+```
+- [ ] Verify format matches above
+- [ ] Check all details accurate
+- [ ] Verify customer can just click "Send"
+
+### Test Restaurant Receives Order
+- [ ] Use restaurant owner's phone
+- [ ] Check WhatsApp inbox
+- [ ] Verify order message received
+- [ ] Verify all details readable
+- [ ] Owner can reply to customer if needed
+
+### Test Order Without WhatsApp
+- [ ] Open menu on device without WhatsApp
+- [ ] Click "Order via WhatsApp"
+- [ ] Verify redirects to WhatsApp web or shows error
+- [ ] Or verify SMS fallback (if implemented)
+
+---
+
+## 12. ADMIN PANEL - USER MANAGEMENT
+
+### Test Admin Login
+- [ ] Go to admin panel URL
+- [ ] Login with admin credentials
+- [ ] Verify admin dashboard loads
+- [ ] Check different sections accessible
+
+### Test View All Users
+- [ ] Go to "Users" section
+- [ ] Verify list of all restaurant owners
+- [ ] Check columns show:
+  - Name, Email, Phone
+  - Subscription status (Active/Expired/Pending)
+  - Package type
+  - Registration date
+  - Number of restaurants
+  - Number of menu items
+  - Number of QR codes
+
+### Test Search Users
+- [ ] Use search box to find user by email
+- [ ] Search by restaurant name
+- [ ] Search by phone number
+- [ ] Verify results filter correctly
+
+### Test Filter Users
+- [ ] Filter by "Active Subscriptions"
+- [ ] Filter by "Expired Subscriptions"
+- [ ] Filter by "Pending Payment"
+- [ ] Filter by package type
+- [ ] Verify counts match
+
+### Test View User Details
+- [ ] Click on specific user
+- [ ] Verify detailed page shows:
+  - Full profile information
+  - Subscription history
+  - Payment history
+  - Restaurants list
+  - Activity log
+  - QR codes created
+
+### Test Suspend User Account
+- [ ] Click "Suspend" on user account
+- [ ] Verify confirmation prompt
+- [ ] Confirm suspension
+- [ ] Check user's status = "suspended"
+- [ ] User tries to login
+- [ ] Verify "Account suspended" message
+
+### Test Reactivate User Account
+- [ ] Click "Reactivate" on suspended user
+- [ ] Verify account status = "active"
+- [ ] User can login successfully
+
+### Test Delete User Account
+- [ ] Click "Delete" on test user
+- [ ] Verify warning: "This will delete all data"
+- [ ] Confirm deletion
+- [ ] Check user removed from list
+- [ ] Verify associated data handled (deleted or orphaned)
+
+### Test Reset User Password
+- [ ] Click "Reset Password" on user
+- [ ] Generate temporary password
+- [ ] Verify password reset email sent to user
+- [ ] User receives email with temp password
+- [ ] User can login with temp password
+- [ ] User prompted to change password
+
+### Test Edit User Information
+- [ ] Click "Edit" on user
+- [ ] Change email address
+- [ ] Change phone number
+- [ ] Save changes
+- [ ] Verify updates reflected
+
+---
+
+## 13. ADMIN PANEL - SUBSCRIPTION MANAGEMENT
+
+### Test View All Subscriptions
+- [ ] Go to "Subscriptions" section
+- [ ] Verify list shows:
+  - User name/email
+  - Package type
+  - Status (Active/Expired/Pending/Cancelled)
+  - Start date
+  - Next billing date
+  - Payment method (Stripe/Manual)
+  - Amount
+
+### Test Filter Subscriptions
+- [ ] Filter by "Active"
+- [ ] Filter by "Expired"
+- [ ] Filter by "Pending Payment"
+- [ ] Filter by payment method
+- [ ] Verify filters work
+
+### Test View Subscription Details
+- [ ] Click on subscription
+- [ ] Verify shows:
+  - Full payment history
+  - Renewal dates
+  - Package changes (if upgraded/downgraded)
+  - Cancellation reason (if cancelled)
+
+### Test Manual Subscription Extension
+- [ ] Click "Extend Subscription" on active subscription
+- [ ] Add 1 month
+- [ ] Verify next billing date pushed forward
+- [ ] Check database updated
+- [ ] Verify user notified
+
+### Test Cancel Subscription
+- [ ] Click "Cancel" on active subscription
+- [ ] Enter cancellation reason
+- [ ] Confirm cancellation
+- [ ] Check status = "cancelled"
+- [ ] Verify user loses access at period end (not immediately)
+
+### Test Immediate Subscription Termination
+- [ ] Click "Terminate Immediately"
+- [ ] Confirm termination
+- [ ] Verify user loses access instantly
+- [ ] Check status = "terminated"
+
+### Test Upgrade User Package
+- [ ] Select user with Basic package
+- [ ] Click "Upgrade to Pro"
+- [ ] Verify package changes
+- [ ] Check new features unlocked
+- [ ] Verify price adjusted (prorated if mid-cycle)
+
+### Test Downgrade User Package
+- [ ] Select user with Pro package
+- [ ] Click "Downgrade to Basic"
+- [ ] Verify restrictions applied
+- [ ] Check features locked if limits exceeded
+- [ ] Verify price adjusted
+
+---
+
+## 14. ADMIN PANEL - PAYMENT MANAGEMENT
+
+### Test Pending Payments Queue
+- [ ] Go to "Pending Payments"
+- [ ] Verify all submitted manual payments show
+- [ ] Check sorted by submission date (newest first)
+- [ ] Verify payment count badge on menu
+
+### Test View Payment Details
+- [ ] Click on pending payment
+- [ ] Verify shows:
+  - User information
+  - Package selected
+  - Amount
+  - Payment method (Bank/MTN/Airtel)
+  - Transaction reference
+  - Submitted date/time
+  - User notes
+  - Receipt image/PDF
+
+### Test View Receipt
+- [ ] Click "View Receipt" button
+- [ ] Verify receipt opens in modal or new tab
+- [ ] Check image loads correctly
+- [ ] Verify can zoom in to read details
+- [ ] Can download receipt if needed
+
+### Test Approve Payment
+- [ ] Click "Approve" button
+- [ ] Verify confirmation prompt: "Activate subscription?"
+- [ ] Confirm approval
+- [ ] Check payment status = "verified"
+- [ ] Check subscription status = "active"
+- [ ] Verify payment moved to "Approved" section
+- [ ] Check user received approval email
+- [ ] Verify admin activity logged
+
+### Test Reject Payment
+- [ ] Click "Reject" button
+- [ ] Modal opens for rejection reason
+- [ ] Enter reason: "Receipt unclear, please resubmit"
+- [ ] Confirm rejection
+- [ ] Check payment status = "rejected"
+- [ ] Verify payment moved to "Rejected" section
+- [ ] Check user received rejection email with reason
+- [ ] Verify admin activity logged
+
+### Test Payment History
+- [ ] Go to "Payment History"
+- [ ] Verify shows all payments (approved, rejected, stripe)
+- [ ] Filter by date range
+- [ ] Filter by payment method
+- [ ] Export to CSV/Excel
+- [ ] Verify export contains correct data
+
+### Test Refund Payment (if implemented)
+- [ ] Go to approved payment
+- [ ] Click "Issue Refund"
+- [ ] Enter refund amount
+- [ ] Enter refund reason
+- [ ] Confirm refund
+- [ ] Check payment marked as refunded
+- [ ] For Stripe: verify refund processed in Stripe dashboard
+
+### Test Revenue Summary
+- [ ] Go to "Revenue" dashboard
+- [ ] Verify shows:
+  - Total revenue this month
+  - Revenue by payment method
+  - Revenue by package
+  - Pending payments value
+  - Revenue chart (daily/monthly)
+
+---
+
+## 15. ADMIN PANEL - PACKAGE MANAGEMENT
+
+### Test View All Packages
+- [ ] Go to "Packages" section
+- [ ] Verify shows:
+  - Basic (10,000 RWF)
+  - Pro (25,000 RWF)
+  - Enterprise (50,000 RWF)
+- [ ] Check features list per package
+
+### Test Create New Package
+- [ ] Click "Create Package"
+- [ ] Fill in:
+  - Name: "Starter"
+  - Price: 5,000 RWF
+  - Billing period: Monthly
+  - Features: 1 restaurant, 25 items, 3 QR codes
+- [ ] Save package
+- [ ] Verify appears in packages list
+- [ ] Check available in signup flow
+
+### Test Edit Package
+- [ ] Click "Edit" on Basic package
+- [ ] Change price from 10,000 to 12,000
+- [ ] Update features: increase items to 75
+- [ ] Save changes
+- [ ] Verify updates reflected
+- [ ] Check existing users grandfathered (old price)
+- [ ] New users see new price
+
+### Test Package Features Toggle
+For each package, test toggling features:
+- [ ] AI Menu Import - turn ON/OFF
+- [ ] Multiple Menu Groups - turn ON/OFF
+- [ ] Custom Branding - turn ON/OFF
+- [ ] Analytics Dashboard - turn ON/OFF
+- [ ] Multi-Restaurant - turn ON/OFF
+- [ ] Priority Support - turn ON/OFF
+- [ ] WhatsApp API - turn ON/OFF
+
+### Test Feature Limits
+- [ ] Set Basic package limits:
+  - Restaurants: 1
+  - Menu Items: 50
+  - Menu Groups: 1
+  - QR Codes: 5
+  - AI Imports: 0
+- [ ] Save and verify
+
+### Test Delete Package
+- [ ] Try deleting package with active users
+- [ ] Verify warning: "X users subscribed to this package"
+- [ ] Prevent deletion or require migration
+- [ ] Delete package with zero users
+- [ ] Verify deleted successfully
+
+### Test Package Feature Enforcement
+- [ ] Login as user with Basic package
+- [ ] Try creating 2nd restaurant
+- [ ] Verify blocked with upgrade message
+- [ ] Try creating 6th QR code
+- [ ] Verify blocked
+- [ ] Try using AI import
+- [ ] Verify blocked with upgrade prompt
+
+### Test Stripe Product Sync
+- [ ] After creating/editing package
+- [ ] Check Stripe dashboard
+- [ ] Verify product/price created/updated in Stripe
+- [ ] Verify webhook synced correctly
+
+---
+
+## 16. ADMIN PANEL - PLATFORM ANALYTICS
+
+### Test Dashboard Overview
+- [ ] Login as admin
+- [ ] View main dashboard
+- [ ] Verify shows:
+  - Total users (count)
+  - Active subscriptions (count)
+  - Expired subscriptions (count)
+  - Pending payments (count)
+  - Total revenue (this month)
+  - Total revenue (all time)
+  - New signups (this week/month)
+
+### Test User Growth Chart
+- [ ] View "Users Over Time" chart
+- [ ] Check shows signups per day/week/month
+- [ ] Toggle between daily/weekly/monthly view
+- [ ] Verify data accurate
+
+### Test Revenue Chart
+- [ ] View "Revenue Over Time" chart
+- [ ] Check shows income per period
+- [ ] Filter by payment method (Stripe vs Manual)
+- [ ] Export chart data
+
+### Test Popular Features
+- [ ] View "Feature Usage" stats
+- [ ] Check shows:
+  - Total restaurants created
+  - Total menu items added
+  - Total QR codes generated
+  - AI imports used
+  - Most active users
+- [ ] Verify counts accurate
+
+### Test Package Distribution
+- [ ] View "Subscriptions by Package" chart
+- [ ] Verify shows breakdown:
+  - Basic: X users
+  - Pro: Y users
+  - Enterprise: Z users
+- [ ] Verify percentages
+
+### Test Churn Rate (if implemented)
+- [ ] View cancellation stats
+- [ ] Check:
+  - Cancelled subscriptions this month
+  - Cancellation reasons
+  - Churn rate percentage
+- [ ] Identify trends
+
+### Test Export Analytics
+- [ ] Click "Export Report"
+- [ ] Select date range
+- [ ] Download CSV/PDF
+- [ ] Verify contains all key metrics
+
+---
+
+## 17. EMAIL NOTIFICATIONS
+
+### Test User Emails
+
+**Signup Email:**
+- [ ] Register new account
+- [ ] Check inbox for welcome email
+- [ ] Verify contains: welcome message, next steps
+
+**Payment Submitted Email (Manual):**
+- [ ] Submit manual payment
+- [ ] Check inbox
+- [ ] Verify email says "Payment received, under review"
+
+**Payment Approved Email:**
+- [ ] Admin approves payment
+- [ ] Check inbox
+- [ ] Verify email contains:
+  - "Your subscription is now active"
+  - Package details
+  - Expiry date
+  - Link to dashboard
+
+**Payment Rejected Email:**
+- [ ] Admin rejects payment
+- [ ] Check inbox
+- [ ] Verify email contains:
+  - Rejection reason
+  - Instructions to resubmit
+  - Support contact
+
+**Subscription Activated Email (Stripe):**
+- [ ] Complete Stripe payment
+- [ ] Check inbox
+- [ ] Verify instant confirmation email
+
+**Renewal Reminder Email (7 days):**
+- [ ] Set subscription to expire in 7 days
+- [ ] Trigger reminder
+- [ ] Check inbox
+- [ ] Verify contains: days left, renewal link, amount
+
+**Subscription Expired Email:**
+- [ ] Let subscription expire
+- [ ] Check inbox next day
+- [ ] Verify email says subscription expired
+- [ ] Contains renewal link
+
+**Subscription Renewed Email:**
+- [ ] Renew expired subscription
+- [ ] Check inbox
+- [ ] Verify confirmation email
+
+### Test Admin Emails
+
+**New Payment Pending Email:**
+- [ ] User submits manual payment
+- [ ] Check admin email inbox
+- [ ] Verify notification received
+- [ ] Contains user details, amount, link to review
+
+**Daily Summary Email (optional):**
+- [ ] Check admin inbox daily
+- [ ] Verify summary email contains:
+  - New signups
+  - Pending payments
+  - Revenue today
+  - Expiring subscriptions
+
+---
+
+## 18. SECURITY & PERMISSIONS
+
+### Test User Authentication
+- [ ] Try accessing dashboard without login
+- [ ] Verify redirected to login page
+- [ ] Login with wrong password
+- [ ] Verify error message
+- [ ] Login successfully
+- [ ] Verify session persists
+
+### Test User Can Only See Own Data
+- [ ] Login as User A
+- [ ] Try accessing User B's restaurant (by URL manipulation)
+- [ ] Verify access denied
+- [ ] Try editing User B's menu
+- [ ] Verify blocked
+
+### Test Admin Authentication
+- [ ] Try accessing admin panel without admin login
+- [ ] Verify redirected or access denied
+- [ ] Login as regular user
+- [ ] Try accessing admin URL
+- [ ] Verify blocked
+- [ ] Login as admin
+- [ ] Verify full access
+
+### Test Password Reset
+- [ ] Click "Forgot Password"
+- [ ] Enter email
+- [ ] Check inbox for reset link
+- [ ] Click reset link
+- [ ] Enter new password
+- [ ] Verify can login with new password
+
+### Test Session Timeout
+- [ ] Login and leave inactive for 30 minutes
+- [ ] Try performing action
+- [ ] Verify session expired, must re-login
+
+### Test File Upload Security
+- [ ] Try uploading executable file (.exe)
+- [ ] Verify rejected
+- [ ] Try uploading very large file (>10MB)
+- [ ] Verify rejected
+- [ ] Try uploading script file (.php, .js)
+- [ ] Verify rejected or sanitized
+
+---
+
+## 19. PERFORMANCE & SCALABILITY
+
+### Test Page Load Speed
+- [ ] Use browser DevTools Network tab
+- [ ] Load dashboard page
+- [ ] Verify loads under 3 seconds
+- [ ] Load menu page (customer view)
+- [ ] Verify loads under 2 seconds
+
+### Test Image Loading
+- [ ] Menu with 50 items with photos
+- [ ] Verify images load progressively (lazy loading)
+- [ ] Check images are optimized (compressed)
+- [ ] Verify no broken image icons
+
+### Test Database Queries
+- [ ] Check server logs
+- [ ] Verify no N+1 query issues
+- [ ] Ensure proper indexing on:
+  - user_id columns
+  - subscription status
+  - payment status
+
+### Test Concurrent Users
+- [ ] Open application in 5 different browsers/devices
+- [ ] Perform actions simultaneously (create menus, orders)
+- [ ] Verify no conflicts or errors
+- [ ] Check all actions process correctly
+
+### Test Large Menu Performance
+- [ ] Create restaurant with 500+ menu items
+- [ ] Load menu page
+- [ ] Verify pagination or infinite scroll works
+- [ ] Search functionality remains fast
+- [ ] Filter by menu group works smoothly
+
+### Test Multiple QR Scans
+- [ ] Have 10+ people scan same QR code simultaneously
+- [ ] Verify all can access menu
+- [ ] No server timeout or crashes
+- [ ] Orders process correctly for all
+
+---
+
+## 20. MOBILE RESPONSIVENESS
+
+### Test on Mobile Devices
+
+**Restaurant Owner Dashboard (Mobile):**
+- [ ] Login on mobile phone
+- [ ] Verify dashboard displays correctly
+- [ ] Check navigation menu accessible
+- [ ] Test adding menu item on mobile
+- [ ] Upload photo from phone camera
+- [ ] Create QR code on mobile
+- [ ] Download QR code to phone
+- [ ] All buttons clickable (not too small)
+
+**Customer Menu (Mobile):**
+- [ ] Scan QR code with phone
+- [ ] Verify menu loads properly
+- [ ] Images display correctly
+- [ ] Can scroll through items
+- [ ] Add items to cart easily
+- [ ] Buttons are touch-friendly
+- [ ] WhatsApp opens correctly
+
+**Admin Panel (Mobile/Tablet):**
+- [ ] Access admin panel on tablet
+- [ ] View pending payments
+- [ ] Approve payment from mobile
+- [ ] View analytics charts
+- [ ] Charts are readable on small screen
+
+### Test Different Screen Sizes
+- [ ] iPhone SE (small screen) - verify usable
+- [ ] iPhone 14 Pro - verify optimal
+- [ ] Samsung Galaxy - verify works
+- [ ] iPad - verify responsive
+- [ ] Large desktop monitor - verify not stretched awkwardly
+
+---
+
+## 21. BROWSER COMPATIBILITY
+
+### Test on Different Browsers
+
+**Chrome:**
+- [ ] Full functionality works
+- [ ] QR code generation works
+- [ ] File uploads work
+- [ ] WhatsApp redirect works
+
+**Safari (iOS):**
+- [ ] All features work
+- [ ] Camera QR scan works
+- [ ] WhatsApp opens correctly
+- [ ] No iOS-specific bugs
+
+**Firefox:**
+- [ ] Dashboard loads properly
+- [ ] Forms submit correctly
+- [ ] Images display
+- [ ] Payments process
+
+**Edge:**
+- [ ] Basic functionality works
+- [ ] No errors in console
+
+**Mobile Browsers:**
+- [ ] Chrome Mobile
+- [ ] Safari Mobile
+- [ ] Samsung Internet
+- [ ] All work consistently
+
+---
+
+## 22. ERROR HANDLING
+
+### Test Network Errors
+- [ ] Turn off internet mid-upload
+- [ ] Verify shows "Connection lost" message
+- [ ] Reconnect internet
+- [ ] Verify can retry action
+- [ ] Form data not lost
+
+### Test Server Errors
+- [ ] Simulate 500 server error
+- [ ] Verify user-friendly error message
+- [ ] Not technical error stack trace
+- [ ] Provides "Try again" or support contact
+
+### Test 404 Pages
+- [ ] Visit non-existent URL
+- [ ] Verify custom 404 page shows
+- [ ] Contains link back to dashboard/home
+
+### Test Validation Errors
+- [ ] Submit form with invalid data
+- [ ] Verify clear error messages
+- [ ] Errors appear next to relevant fields
+- [ ] Red highlighting on error fields
+- [ ] Can correct and resubmit
+
+### Test Payment Failures
+- [ ] Stripe payment declines
+- [ ] Verify clear error message
+- [ ] User can retry with different card
+- [ ] Support contact provided
+
+---
+
+## 23. DATA INTEGRITY
+
+### Test Menu Updates Reflect in QR
+- [ ] Create QR code for menu
+- [ ] Customer scans QR (keep browser open)
+- [ ] Owner updates menu prices
+- [ ] Customer refreshes page
+- [ ] Verify new prices show immediately
+
+### Test Restaurant Deletion
+- [ ] Delete restaurant
+- [ ] Verify all associated data handled:
+  - Menu groups deleted or archived
+  - Menu items deleted or archived
+  - QR codes deactivated
+- [ ] Try scanning deleted restaurant's QR
+- [ ] Verify shows appropriate message
+
+### Test User Deletion Impact
+- [ ] Admin deletes user
+- [ ] Check orphaned data handled
+- [ ] Customer tries scanning that user's QR
+- [ ] Verify graceful error or redirect
+
+### Test Data Export Accuracy
+- [ ] Export menu as PDF
+- [ ] Compare with live data
+- [ ] Verify all items included
+- [ ] Prices match exactly
+- [ ] No duplicates or missing items
+
+---
+
+## 24. EDGE CASES
+
+### Test Empty States
+
+**No Restaurants:**
+- [ ] Login as new user (after payment)
+- [ ] Dashboard with no restaurants
+- [ ] Verify shows "Create your first restaurant" prompt
+- [ ] Not broken layout
+
+**No Menu Items:**
+- [ ] Restaurant with no menu items
+- [ ] Verify shows "Add your first menu item"
+- [ ] Customer scans QR
+- [ ] Shows "Menu coming soon" message
+
+**No QR Codes:**
+- [ ] Restaurant with menus but no QR codes
+- [ ] Verify prompts to create QR codes
+
+**No Pending Payments:**
+- [ ] Admin checks pending payments
+- [ ] All are processed
+- [ ] Shows "No pending payments" message
+- [ ] Not blank page
+
+### Test Special Characters
+
+**Restaurant Names:**
+- [ ] Create restaurant: "Café René's Résidence"
+- [ ] Verify accents display correctly
+- [ ] Test with emojis: "🍕 Pizza Place"
+- [ ] Verify saves and displays
+
+**Menu Item Names:**
+- [ ] Add item: "Côte d'Ivoire Special"
+- [ ] Add item with quotes: "Chef's "Signature" Dish"
+- [ ] Add item with apostrophe: "Bob's Burger"
+- [ ] Verify all display correctly in menu and WhatsApp
+
+**Prices:**
+- [ ] Enter price: 1,500.50 (decimal)
+- [ ] Enter very large price: 999,999
+- [ ] Enter very small: 100
+- [ ] Verify all calculate correctly
+
+### Test Timezone Issues
+- [ ] User in different timezone creates restaurant
+- [ ] Set menu availability: 6AM-11AM
+- [ ] Verify times saved in correct timezone
+- [ ] Customer views menu at 10AM their time
+- [ ] Verify availability shows correctly
+
+### Test Duplicate Prevention
+- [ ] Try creating two restaurants with same name
+- [ ] Verify allowed (different users can have same name)
+- [ ] Try creating QR code with same table name
+- [ ] Verify warning or allowed with unique ID
+
+---
+
+## 25. LOCALIZATION (If Implemented)
+
+### Test Language Support
+- [ ] Check if multiple languages available
+- [ ] Switch to French (if supported)
+- [ ] Verify UI translates
+- [ ] Menu items stay in original language
+- [ ] System messages in selected language
+
+### Test Currency Display
+- [ ] Verify prices show: "5,000 RWF"
+- [ ] Check comma separators for thousands
+- [ ] No currency symbol issues
+- [ ] Consistent formatting throughout
+
+---
+
+## 26. BACKUP & RECOVERY
+
+### Test Data Backup (Admin)
+- [ ] Admin accesses backup section
+- [ ] Click "Create Backup"
+- [ ] Verify backup file downloads
+- [ ] Contains: users, restaurants, menus, subscriptions
+
+### Test Data Restore (Admin)
+- [ ] Upload backup file
+- [ ] Restore data
+- [ ] Verify data restored correctly
+- [ ] Check no data corruption
+
+### Test Accidental Deletion Recovery
+- [ ] User accidentally deletes menu item
+- [ ] Check if "Undo" option available
+- [ ] Or soft delete with restore option
+- [ ] Verify can recover within time window
+
+---
+
+## 27. LOGS & MONITORING
+
+### Test Activity Logs
+- [ ] Admin views activity logs
+- [ ] Verify records:
+  - User logins
+  - Payment approvals/rejections
+  - Subscription changes
+  - Restaurant creations
+  - Menu updates
+- [ ] Filter by date range
+- [ ] Filter by user
+- [ ] Export logs
+
+### Test Error Logs
+- [ ] Admin views error logs
+- [ ] Check recent errors captured
+- [ ] Verify includes:
+  - Error type
+  - User affected
+  - Timestamp
+  - Stack trace (for debugging)
+- [ ] Critical errors highlighted
+
+### Test Payment Logs
+- [ ] Admin views payment transaction logs
+- [ ] Every Stripe webhook logged
+- [ ] Every manual payment submission logged
+- [ ] Approval/rejection logged
+- [ ] Can audit full payment history
+
+---
+
+## 28. API ENDPOINTS (If Applicable)
+
+### Test API Authentication
+- [ ] Try accessing API without token
+- [ ] Verify 401 Unauthorized
+- [ ] Get valid API token
+- [ ] Verify requests succeed
+
+### Test Menu API
+- [ ] GET /api/restaurants/{id}/menu
+- [ ] Verify returns menu JSON
+- [ ] Check format correct
+- [ ] Verify customer can fetch menu programmatically
+
+### Test Order API (If Implemented)
+- [ ] POST /api/orders
+- [ ] Submit order via API
+- [ ] Verify creates order record
+- [ ] WhatsApp message sent
+
+### Test Webhook Endpoints
+- [ ] Test Stripe webhook endpoint
+- [ ] Send test webhook from Stripe
+- [ ] Verify received and processed
+- [ ] Check signature validation works
+
+---
+
+## 29. COMPLIANCE & LEGAL
+
+### Test Privacy Policy
+- [ ] Privacy policy page exists
+- [ ] Covers data collection practices
+- [ ] Linked from signup page
+- [ ] Updated date shown
+
+### Test Terms of Service
+- [ ] Terms page exists
+- [ ] Covers subscription terms
+- [ ] Cancellation policy clear
+- [ ] Linked from signup page
+
+### Test GDPR Compliance (If Applicable)
+- [ ] User can request data export
+- [ ] User can request data deletion
+- [ ] Cookie consent banner (if using cookies)
+- [ ] Data processing documented
+
+### Test Payment Security
+- [ ] Stripe PCI compliance active
+- [ ] No card numbers stored in your database
+- [ ] Manual payment receipts stored securely
+- [ ] SSL/HTTPS on all pages
+
+---
+
+## 30. FINAL CHECKS
+
+### Pre-Launch Checklist
+- [ ] All test user accounts cleaned up
+- [ ] All test restaurants deleted
+- [ ] Test payment data removed
+- [ ] Production Stripe keys configured
+- [ ] Production database backup created
+- [ ] Email sending configured (not test mode)
+- [ ] Domain name configured correctly
+- [ ] SSL certificate active
+- [ ] Error monitoring tool active (Sentry, etc.)
+- [ ] Analytics tracking active (Google Analytics, etc.)
+
+### Documentation Check
+- [ ] User guide written
+- [ ] Admin guide written
+- [ ] FAQ page created
+- [ ] Video tutorials recorded (optional)
+- [ ] Support email/WhatsApp published
+
+### Support System Check
+- [ ] Support email monitored
+- [ ] Support WhatsApp number active
+- [ ] Admin can respond to inquiries
+- [ ] Ticket system working (if implemented)
+
+---
+
+## ISSUES TRACKING TEMPLATE
+
+As you test, track issues found:
+
+```
+Issue #1
+Priority: High/Medium/Low
+Feature: [Which section]
+Description: [What's wrong]
+Steps to Reproduce:
+1. 
+2. 
+3. 
+Expected: [What should happen]
+Actual: [What actually happens]
+Screenshots: [If applicable]
+Status: Open/Fixed/Won't Fix
+```
+
+---
+
+## TESTING SIGN-OFF
+
+After completing all tests:
+
+**Tested By:** _______________  
+**Date:** _______________  
+**Total Tests:** _______________  
+**Passed:** _______________  
+**Failed:** _______________  
+**Critical Issues:** _______________  
+
+**Ready for Production?** Yes / No
+
+**Notes:**
+_________________________________
+_________________________________
+_________________________________
+
+---
+
+## RECOMMENDED TESTING ORDER
+
+1. **Day 1:** Test sections 1-5 (User flow basics)
+2. **Day 2:** Test sections 6-11 (Menu and ordering)
+3. **Day 3:** Test sections 12-15 (Admin features)
+4. **Day 4:** Test sections 16-24 (Edge cases, performance)
+5. **Day 5:** Test sections 25-30 (Final checks)
+
+**Pro Tip:** Have 2-3 people test simultaneously to catch issues one person might miss. Use real phones, not just browser dev tools for mobile testing.

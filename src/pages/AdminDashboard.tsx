@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import AdminRestaurantManager from '@/components/AdminRestaurantManager';
 import AdminOverview from "@/components/admin/AdminOverview";
-import AdminPaymentGateways from "@/components/admin/AdminPaymentGateways";
-import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
-import { AdminManualPayments } from "@/components/AdminManualPayments";
-import WhatsAppNotificationManager from "@/components/WhatsAppNotificationManager";
-import AdminPackages from "@/pages/admin/AdminPackages";
+import AdminSettings from "@/components/admin/AdminSettings";
+import SubscriptionPackages from "@/pages/admin/SubscriptionPackages";
+import UserSubscriptions from "@/pages/admin/UserSubscriptions";
 import { Menu as MenuIcon, X, LogOut } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -20,12 +17,9 @@ const AdminDashboard = () => {
   const getActiveTabFromPath = () => {
     const path = location.pathname;
     if (path === '/admin' || path === '/admin/overview') return 'overview';
-    if (path === '/admin/restaurants') return 'restaurants';
     if (path === '/admin/packages') return 'packages';
-    if (path === '/admin/payment-gateways') return 'payment-gateways';
     if (path === '/admin/subscriptions') return 'subscriptions';
-    if (path === '/admin/manual-payments') return 'manual-payments';
-    if (path === '/admin/whatsapp') return 'whatsapp';
+    if (path === '/admin/settings') return 'settings';
     return 'overview';
   };
   
@@ -38,12 +32,9 @@ const AdminDashboard = () => {
 
   const sidebarItems = [
     { id: 'overview', label: 'Dashboard', materialIcon: 'dashboard' },
-    { id: 'restaurants', label: 'Restaurants', materialIcon: 'store' },
-    { id: 'packages', label: 'Subscription Plans', materialIcon: 'credit_card' },
-    { id: 'payment-gateways', label: 'Payment Gateways', materialIcon: 'settings' },
-    { id: 'subscriptions', label: 'Subscriptions', materialIcon: 'group' },
-    { id: 'manual-payments', label: 'Manual Payments', materialIcon: 'receipt' },
-    { id: 'whatsapp', label: 'WhatsApp', materialIcon: 'chat' }
+    { id: 'packages', label: 'Subscription Packages', materialIcon: 'card_membership' },
+    { id: 'subscriptions', label: 'User Subscriptions', materialIcon: 'people' },
+    { id: 'settings', label: 'Settings', materialIcon: 'settings' }
   ];
 
   const handleSignOut = async () => {
@@ -55,18 +46,12 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case 'overview':
         return <AdminOverview />;
-      case 'restaurants':
-        return <AdminRestaurantManager />;
       case 'packages':
-        return <AdminPackages />;
-      case 'payment-gateways':
-        return <AdminPaymentGateways />;
+        return <SubscriptionPackages />;
       case 'subscriptions':
-        return <AdminSubscriptions />;
-      case 'manual-payments':
-        return <AdminManualPayments />;
-      case 'whatsapp':
-        return <WhatsAppNotificationManager />;
+        return <UserSubscriptions />;
+      case 'settings':
+        return <AdminSettings />;
       default:
         return <AdminOverview />;
     }

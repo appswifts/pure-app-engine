@@ -21,12 +21,14 @@ import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { ChevronRight, Plus, Store, UtensilsCrossed, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingTracker } from "@/utils/debugUtils";
+import EmbedCodeGenerator from "@/components/dashboard/EmbedCodeGenerator";
 
 interface Restaurant {
   id: string;
   name: string;
   slug: string;
   logo_url: string | null;
+  brand_color: string;
 }
 
 interface MenuGroup {
@@ -75,7 +77,7 @@ export default function RestaurantOverview() {
       // Load restaurant
       const { data: restaurantData, error: restaurantError } = await supabase
         .from("restaurants")
-        .select("id, name, slug, logo_url")
+        .select("id, name, slug, logo_url, brand_color")
         .eq("slug", slug)
         .single();
 
@@ -432,6 +434,9 @@ export default function RestaurantOverview() {
             </div>
           )}
         </div>
+
+        {/* Embed Code Generator Section */}
+        <EmbedCodeGenerator restaurant={restaurant} />
 
         {/* Add Menu Group Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

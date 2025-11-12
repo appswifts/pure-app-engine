@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import SubscriptionDebugTool from '@/components/admin/SubscriptionDebugTool';
 import { 
   Store, 
   Users, 
-  CreditCard, 
+  UtensilsCrossed,
   TrendingUp,
-  CheckCircle,
-  AlertTriangle
+  CheckCircle
 } from 'lucide-react';
 
 const AdminOverview: React.FC = () => {
   const [stats, setStats] = useState({
     totalRestaurants: 0,
-    activeSubscriptions: 0,
-    pendingPayments: 0,
-    totalRevenue: 0
+    totalUsers: 0,
+    totalMenuItems: 0,
+    totalCategories: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -31,31 +31,26 @@ const AdminOverview: React.FC = () => {
         .from('restaurants')
         .select('*', { count: 'exact', head: true });
 
-      // Get active subscriptions
-      const { count: activeSubCount } = await supabase
-        .from('subscriptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+      // Get user count
+      const { count: userCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
 
-      // Get pending payments
-      const { count: pendingCount } = await supabase
-        .from('payment_records')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+      // Get menu items count
+      const { count: itemCount } = await supabase
+        .from('menu_items')
+        .select('*', { count: 'exact', head: true });
 
-      // Get total revenue (sum of verified payments)
-      const { data: revenueData } = await supabase
-        .from('payment_records')
-        .select('amount')
-        .eq('status', 'verified');
-
-      const totalRevenue = revenueData?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
+      // Get categories count
+      const { count: categoryCount } = await supabase
+        .from('categories')
+        .select('*', { count: 'exact', head: true });
 
       setStats({
         totalRestaurants: restaurantCount || 0,
-        activeSubscriptions: activeSubCount || 0,
-        pendingPayments: pendingCount || 0,
-        totalRevenue
+        totalUsers: userCount || 0,
+        totalMenuItems: itemCount || 0,
+        totalCategories: categoryCount || 0
       });
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -115,39 +110,39 @@ const AdminOverview: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeSubscriptions}</div>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
-              Currently paying subscribers
+              Registered accounts
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-warning" />
+            <CardTitle className="text-sm font-medium">Menu Items</CardTitle>
+            <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingPayments}</div>
+            <div className="text-2xl font-bold">{stats.totalMenuItems}</div>
             <p className="text-xs text-muted-foreground">
-              Require admin review
+              Total dishes created
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-success" />
+            <CardTitle className="text-sm font-medium">Categories</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(stats.totalRevenue / 1000).toFixed(1)}K RWF</div>
+            <div className="text-2xl font-bold">{stats.totalCategories}</div>
             <p className="text-xs text-muted-foreground">
-              Verified payments only
+              Menu categories
             </p>
           </CardContent>
         </Card>
@@ -161,13 +156,6 @@ const AdminOverview: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Payment System</span>
-              <Badge variant="default" className="bg-success text-success-foreground">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Operational
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
               <span className="text-sm">Database</span>
               <Badge variant="default" className="bg-success text-success-foreground">
                 <CheckCircle className="h-3 w-3 mr-1" />
@@ -175,10 +163,17 @@ const AdminOverview: React.FC = () => {
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm">WhatsApp Service</span>
+              <span className="text-sm">API Services</span>
               <Badge variant="default" className="bg-success text-success-foreground">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                Connected
+                Operational
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">QR Code System</span>
+              <Badge variant="default" className="bg-success text-success-foreground">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Active
               </Badge>
             </div>
           </CardContent>
@@ -191,20 +186,25 @@ const AdminOverview: React.FC = () => {
           <CardContent>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span>New restaurant registration</span>
+                <span>New restaurant created</span>
                 <span className="text-muted-foreground">2 hours ago</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Payment verified</span>
+                <span>Menu updated</span>
                 <span className="text-muted-foreground">4 hours ago</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Subscription activated</span>
+                <span>User registered</span>
                 <span className="text-muted-foreground">6 hours ago</span>
               </div>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Debug Tools Section */}
+      <div className="mt-8">
+        <SubscriptionDebugTool />
       </div>
     </div>
   );

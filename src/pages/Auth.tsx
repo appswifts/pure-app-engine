@@ -7,12 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import BrandLogo from "@/components/BrandLogo";
-import { Mail, Lock, User, Shield, Store } from "lucide-react";
+import { Mail, Lock, User, Shield, Store, Utensils } from "lucide-react";
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/styles/phone-input.css';
 import { validateAndSanitizeInput, validateEmail, validateWhatsappNumber } from '@/lib/validation';
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -168,7 +168,7 @@ const Auth = () => {
           throw new Error("Authentication failed");
         }
 
-        const { data: isAdmin, error: roleError } = await supabase.rpc('verify_admin_access', {
+        const { data: isAdmin, error: roleError } = await (supabase as any).rpc('verify_admin_access', {
           p_user_id: authData.user.id
         });
 
@@ -211,11 +211,14 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 text-primary mb-4">
+          <div className="inline-flex items-center gap-3 text-primary mb-4">
             {isAdminMode ? (
               <Shield className="h-12 w-12" />
             ) : (
-              <BrandLogo size="3xl" />
+              <>
+                <Utensils className="h-12 w-12" />
+                <span className="text-3xl font-bold">QR Menu</span>
+              </>
             )}
           </div>
           <p className="text-muted-foreground">
@@ -349,6 +352,19 @@ const Auth = () => {
                     >
                       {loading ? "Signing in..." : "Sign In"}
                     </Button>
+
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Or continue with
+                        </span>
+                      </div>
+                    </div>
+
+                    <GoogleSignInButton />
                   </form>
                 </TabsContent>
 
@@ -359,13 +375,13 @@ const Auth = () => {
                     handleSignUp(formData);
                   }} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="signup-name">Restaurant Name</Label>
+                      <Label htmlFor="signup-name">Name</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="signup-name"
                           name="name"
-                          placeholder="My Restaurant"
+                          placeholder="Your full name"
                           className="pl-10"
                           required
                         />
@@ -422,6 +438,19 @@ const Auth = () => {
                     >
                       {loading ? "Creating Account..." : "Create Account"}
                     </Button>
+
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Or continue with
+                        </span>
+                      </div>
+                    </div>
+
+                    <GoogleSignInButton />
                   </form>
                 </TabsContent>
               </Tabs>

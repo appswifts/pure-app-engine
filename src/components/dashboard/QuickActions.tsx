@@ -27,14 +27,6 @@ const quickActions = [
     href: "/subscription",
     color: "bg-success/10 hover:bg-success/20",
     iconColor: "text-success"
-  },
-  {
-    title: "Settings",
-    description: "Configure app",
-    icon: Settings,
-    href: "/dashboard/settings",
-    color: "bg-muted/40 hover:bg-muted/60",
-    iconColor: "text-muted-foreground"
   }
 ];
 

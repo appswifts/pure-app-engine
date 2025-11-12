@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { RestaurantSidebar } from "@/components/RestaurantSidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import SubscriptionGuard from "@/components/SubscriptionGuard";
 import { 
   Store, 
   Phone, 
@@ -230,21 +232,22 @@ const Restaurants = () => {
                         />
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="whatsapp_number" className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4" />
-                          WhatsApp Number *
-                        </Label>
-                        <Input
-                          id="whatsapp_number"
-                          value={restaurantData.whatsapp_number}
-                          onChange={(e) => setRestaurantData(prev => ({...prev, whatsapp_number: e.target.value}))}
-                          placeholder="+1234567890"
-                          required
-                        />
-                      </div>
+                      <SubscriptionGuard feature="whatsappOrders">
+                        <div className="space-y-2">
+                          <Label htmlFor="whatsapp_number" className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4" />
+                            WhatsApp Number *
+                          </Label>
+                          <Input
+                            id="whatsapp_number"
+                            value={restaurantData.whatsapp_number}
+                            onChange={(e) => setRestaurantData(prev => ({...prev, whatsapp_number: e.target.value}))}
+                            placeholder="+1234567890"
+                            required
+                          />
+                        </div>
+                      </SubscriptionGuard>
                     </div>
-
 
                     <div className="space-y-2">
                       <Label htmlFor="logo_url">

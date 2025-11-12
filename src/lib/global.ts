@@ -106,29 +106,9 @@ export const fetchCountries = async (): Promise<Country[]> => {
 };
 
 // Fetch payment gateways from database
+// Payment gateways removed - subscription system no longer used
 export const fetchPaymentGateways = async (): Promise<PaymentGateway[]> => {
-  if (paymentGatewayCache) {
-    return paymentGatewayCache;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("payment_gateways")
-      .select("*")
-      .eq("is_active", true)
-      .order("name");
-
-    if (error) {
-      console.error("Error fetching payment gateways:", error);
-      return [];
-    }
-
-    paymentGatewayCache = data || [];
-    return paymentGatewayCache;
-  } catch (error) {
-    console.error("Error fetching payment gateways:", error);
-    return [];
-  }
+  return [];
 };
 
 // Get regional pricing for a plan and country

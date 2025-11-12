@@ -1,0 +1,5 @@
+# SPA fallback - serve index.html for all routes
+/*    /index.html   200
+
+# Redirect old URLs if any (example)
+# /old-path    /new-path    301

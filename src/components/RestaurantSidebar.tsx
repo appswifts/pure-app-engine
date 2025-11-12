@@ -34,7 +34,6 @@ const restaurantMenuItems = [
   { title: "AI Menu Import", url: "/dashboard/ai-import", icon: Sparkles },
   { title: "QR Codes & Tables", url: "/dashboard/qr", icon: QrCode },
   { title: "Embed Menu", url: "/dashboard/embed", icon: Code },
-  { title: "Subscription", url: "/dashboard/subscription", icon: CreditCard },
 ];
 
 const userMenuItems = [

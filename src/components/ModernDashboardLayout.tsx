@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/animated-sidebar";
 import {
   LayoutDashboard,
@@ -13,6 +13,9 @@ import {
   LogOut,
   ChefHat,
   Store,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -20,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 interface ModernDashboardLayoutProps {
   children: React.ReactNode;
@@ -38,6 +42,8 @@ export function ModernDashboardLayout({ children }: ModernDashboardLayoutProps) 
 
   // Check if user is admin
   const isAdmin = user?.email === "appswifts@gmail.com" || user?.user_metadata?.role === "admin";
+
+  // Subscription checking removed
 
   const restaurantLinks = [
     {
@@ -62,31 +68,10 @@ export function ModernDashboardLayout({ children }: ModernDashboardLayoutProps) 
       ),
     },
     {
-      label: "Embed Code",
-      href: "/dashboard/embed",
-      icon: (
-        <Code className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
       label: "My Restaurants",
       href: "/dashboard/restaurants",
       icon: (
         <Store className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Subscription",
-      href: "/dashboard/subscription",
-      icon: (
-        <CreditCard className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/dashboard/settings",
-      icon: (
-        <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
   ];
@@ -132,6 +117,8 @@ export function ModernDashboardLayout({ children }: ModernDashboardLayoutProps) 
             </div>
           </div>
           <div>
+            {/* Subscription status removed */}
+
             <SidebarLink
               link={{
                 label: user?.email || "User",

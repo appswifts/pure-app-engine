@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
-import BrandLogo from "@/components/BrandLogo";
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle, Utensils } from "lucide-react";
 
 const PasswordReset = () => {
   const [loading, setLoading] = useState(false);
@@ -67,8 +66,9 @@ const PasswordReset = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 text-primary mb-4">
-              <BrandLogo size="3xl" />
+            <div className="inline-flex items-center gap-3 text-primary mb-4">
+              <Utensils className="h-12 w-12" />
+              <span className="text-3xl font-bold">QR Menu</span>
             </div>
           </div>
 
@@ -118,8 +118,9 @@ const PasswordReset = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 text-primary mb-4">
-            <BrandLogo size="3xl" />
+          <div className="inline-flex items-center gap-3 text-primary mb-4">
+            <Utensils className="h-12 w-12" />
+            <span className="text-3xl font-bold">QR Menu</span>
           </div>
           <p className="text-muted-foreground">
             Reset your password to access your account

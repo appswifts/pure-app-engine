@@ -42,20 +42,21 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { planId, billingInterval = 'monthly' } = await req.json();
-    if (!planId) throw new Error("Plan ID is required");
-    logStep("Request body parsed", { planId, billingInterval });
+    const { productId, subscriptionId, orderId } = await req.json();
+    if (!productId) throw new Error("Product ID is required");
+    logStep("Request body parsed", { productId, subscriptionId, orderId });
 
-    // Get plan details
-    const { data: plan, error: planError } = await supabaseClient
-      .from('subscription_plans')
+    // Get product details with Stripe price ID
+    const { data: product, error: productError } = await supabaseClient
+      .from('subscription_products')
       .select('*')
-      .eq('id', planId)
+      .eq('id', productId)
       .eq('is_active', true)
       .single();
 
-    if (planError || !plan) throw new Error("Plan not found or inactive");
-    logStep("Plan retrieved", { planName: plan.name, price: plan.price });
+    if (productError || !product) throw new Error("Product not found or inactive");
+    if (!product.stripe_price_id) throw new Error("Stripe price ID not configured for this product");
+    logStep("Product retrieved", { productName: product.name, price: product.price, stripePriceId: product.stripe_price_id });
 
     // Get user's restaurant
     const { data: restaurant, error: restaurantError } = await supabaseClient
@@ -84,61 +85,51 @@ serve(async (req) => {
       logStep("New Stripe customer created", { customerId });
     }
 
-    // Calculate pricing
-    const amount = billingInterval === 'yearly' ? plan.price * 12 : plan.price;
-    logStep("Pricing calculated", { amount, interval: billingInterval });
-
-    // Create checkout session
+    // Create checkout session using Stripe Price ID
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [
         {
-          price_data: {
-            currency: plan.currency.toLowerCase(),
-            product_data: {
-              name: `${plan.name} Plan - ${restaurant.name}`,
-              description: plan.description || `${plan.name} subscription plan`,
-            },
-            unit_amount: Math.round(amount * 100), // Convert to cents
-            recurring: {
-              interval: billingInterval === 'yearly' ? 'year' : 'month',
-            },
-          },
+          price: product.stripe_price_id, // Use the Stripe price ID directly
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/subscription?success=true`,
-      cancel_url: `${req.headers.get("origin")}/subscription?canceled=true`,
+      success_url: `${req.headers.get("origin")}/dashboard/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get("origin")}/subscriptions?canceled=true`,
+      client_reference_id: user.id, // Used in webhook to identify user
       metadata: {
         user_id: user.id,
         restaurant_id: restaurant.id,
-        plan_id: planId,
-        billing_interval: billingInterval,
+        product_id: productId,
+        subscription_id: subscriptionId,
+        order_id: orderId,
       },
     });
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
-    // Create pending subscription record
-    const { error: subscriptionError } = await supabaseClient
-      .from('subscriptions')
-      .insert({
-        restaurant_id: restaurant.id,
-        plan_id: planId,
-        status: 'pending',
-        billing_interval: billingInterval,
-        amount: amount,
-        currency: plan.currency,
-        trial_start: new Date().toISOString(),
-        trial_end: new Date(Date.now() + (plan.trial_days * 24 * 60 * 60 * 1000)).toISOString(),
-        created_by: user.id,
-      });
+    // Update existing subscription and order with Stripe session ID if provided
+    if (subscriptionId) {
+      await supabaseClient
+        .from('customer_subscriptions')
+        .update({
+          stripe_checkout_session_id: session.id,
+          stripe_customer_id: customerId,
+        })
+        .eq('id', subscriptionId);
+      logStep("Subscription updated with Stripe session ID");
+    }
 
-    if (subscriptionError) {
-      logStep("WARNING: Failed to create subscription record", { error: subscriptionError });
-    } else {
-      logStep("Subscription record created");
+    if (orderId) {
+      await supabaseClient
+        .from('subscription_orders')
+        .update({
+          gateway_transaction_id: session.id,
+          payment_status: 'pending',
+        })
+        .eq('id', orderId);
+      logStep("Order updated with Stripe session ID");
     }
 
     return new Response(JSON.stringify({ url: session.url }), {

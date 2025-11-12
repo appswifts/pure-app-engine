@@ -1507,6 +1507,44 @@ export default function MenuGroupSettings() {
                       </p>
                     </div>
 
+                    {/* Logo Upload */}
+                    <Card className="border-2 hover:border-primary/50 transition-colors">
+                      <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-b">
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">🖼️</span>
+                          Menu Group Logo / Profile Picture
+                        </CardTitle>
+                        <CardDescription>Upload a unique logo or profile picture for this menu group</CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-6 space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Logo URL</Label>
+                          <Input
+                            type="url"
+                            placeholder="https://example.com/logo.png"
+                            value={customizationForm.logo_url || ''}
+                            onChange={(e) => setCustomizationForm({...customizationForm, logo_url: e.target.value})}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Enter the URL of your menu group logo. If not set, the restaurant's main logo will be used.
+                          </p>
+                        </div>
+                        {customizationForm.logo_url && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <Label className="text-sm font-medium mb-2 block">Preview:</Label>
+                            <img 
+                              src={customizationForm.logo_url} 
+                              alt="Logo preview" 
+                              className="w-24 h-24 object-cover rounded-full border-4 border-primary"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
                     {/* Logo Customization */}
                     <Card className="border-2 hover:border-primary/50 transition-colors">
                       <CardHeader className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950 dark:to-yellow-950 border-b">

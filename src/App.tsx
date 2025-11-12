@@ -18,20 +18,14 @@ import PasswordReset from "./pages/PasswordReset";
 import Dashboard from "./pages/Dashboard";
 import PublicMenu from "./pages/PublicMenu";
 import MenuGroupSelect from "./pages/MenuGroupSelect";
-import RestaurantSettings from "./pages/RestaurantSettings";
-import UserSettings from "./pages/UserSettings";
 import RestaurantsGrid from "./pages/RestaurantsGrid";
 import RestaurantOverview from "./pages/RestaurantOverview";
 import MenuGroupManagement from "./pages/MenuGroupManagement";
 import MenuGroupSettings from "./pages/MenuGroupSettings";
 import Terms from "./pages/Terms";
 import AdminDashboard from "./pages/AdminDashboard";
-import PricingPage from "./pages/PricingPage";
-import Payment from "./pages/Payment";
 import SeedPage from "./pages/SeedPage";
-import Subscription from "./pages/Subscription";
 import NotFound from "./pages/NotFound";
-import EmbedMenu from "./components/EmbedMenu";
 import AIMenuImport from "./pages/AIMenuImport";
 import UserProfile from "./pages/UserProfile";
 import TablesAndQR from "./pages/TablesAndQR";
@@ -88,8 +82,6 @@ const App = () => {
                     {/* Public Routes */}
                     <Route path="/" element={<Index />} />
                     <Route path="/terms" element={<Terms />} />
-                    <Route path="/pricing" element={<PricingPage />} />
-                    <Route path="/checkout" element={<PricingPage />} />
 
                     {/* Auth Routes - unified authentication */}
                     <Route
@@ -191,14 +183,6 @@ const App = () => {
                       element={<Navigate to="/dashboard/qr" replace />}
                     />
                     <Route
-                      path="/dashboard/embed"
-                      element={
-                        <ProtectedRoute>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
                       path="/dashboard/ai-import"
                       element={
                         <ProtectedRoute>
@@ -206,30 +190,7 @@ const App = () => {
                         </ProtectedRoute>
                       }
                     />
-                    <Route
-                      path="/dashboard/subscription"
-                      element={
-                        <ProtectedRoute>
-                          <Subscription />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/dashboard/settings"
-                      element={
-                        <ProtectedRoute>
-                          <UserSettings />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/dashboard/restaurant-settings"
-                      element={
-                        <ProtectedRoute>
-                          <RestaurantSettings />
-                        </ProtectedRoute>
-                      }
-                    />
+                    {/* Settings routes removed - pages deleted */}
                     <Route
                       path="/dashboard/restaurants"
                       element={
@@ -246,23 +207,6 @@ const App = () => {
                         </ProtectedRoute>
                       }
                     />
-                    <Route
-                      path="/dashboard/payment"
-                      element={
-                        <ProtectedRoute>
-                          <Payment />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/payment"
-                      element={
-                        <ProtectedRoute>
-                          <Payment />
-                        </ProtectedRoute>
-                      }
-                    />
-
                     {/* Admin Routes */}
                     <Route
                       path="/admin"
@@ -281,23 +225,15 @@ const App = () => {
                       }
                     />
                     <Route
+                      path="/admin/users"
+                      element={
+                        <ProtectedRoute adminOnly>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
                       path="/admin/restaurants"
-                      element={
-                        <ProtectedRoute adminOnly>
-                          <AdminDashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin/packages"
-                      element={
-                        <ProtectedRoute adminOnly>
-                          <AdminDashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin/payment-gateways"
                       element={
                         <ProtectedRoute adminOnly>
                           <AdminDashboard />
@@ -313,7 +249,7 @@ const App = () => {
                       }
                     />
                     <Route
-                      path="/admin/manual-payments"
+                      path="/admin/packages"
                       element={
                         <ProtectedRoute adminOnly>
                           <AdminDashboard />
@@ -321,7 +257,15 @@ const App = () => {
                       }
                     />
                     <Route
-                      path="/admin/whatsapp"
+                      path="/admin/subscriptions"
+                      element={
+                        <ProtectedRoute adminOnly>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/settings"
                       element={
                         <ProtectedRoute adminOnly>
                           <AdminDashboard />
@@ -340,7 +284,7 @@ const App = () => {
                     />
                     <Route
                       path="/embed/:restaurantSlug"
-                      element={<EmbedMenu />}
+                      element={<PublicMenu />}
                     />
 
                     {/* Legacy Routes for backward compatibility */}

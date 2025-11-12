@@ -1,0 +1,552 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { Users, Plus, Edit, Trash2, CheckCircle, XCircle, Clock, Store } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface User {
+  id: string;
+  email: string;
+  restaurant_count?: number;
+}
+
+interface SubscriptionPackage {
+  name: string;
+  price_monthly: number;
+  price_yearly: number;
+  max_restaurants: number | null;
+  max_menu_items: number | null;
+}
+
+interface UserSubscription {
+  id: string;
+  user_id: string;
+  package_name: string;
+  status: string;
+  started_at: string | null;
+  expires_at: string | null;
+  billing_cycle: string | null;
+  amount_paid: number | null;
+  notes: string | null;
+  restaurants_count: number;
+  menu_items_count: number;
+  user_email?: string;
+}
+
+const RestaurantSubscriptions: React.FC = () => {
+  const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState<RestaurantSubscription | null>(null);
+  const { toast } = useToast();
+
+  const [formData, setFormData] = useState({
+    restaurant_id: '',
+    package_name: '',
+    status: 'active',
+    started_at: new Date().toISOString().split('T')[0],
+    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    billing_cycle: 'monthly',
+    amount_paid: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      // Load subscriptions with restaurant details
+      const { data: subsData, error: subsError } = await (supabase as any)
+        .from('restaurant_subscriptions')
+        .select(`
+          *,
+          restaurant:restaurants(id, name, slug, email)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (subsError) throw subsError;
+      setSubscriptions(subsData || []);
+
+      // Load all restaurants
+      const { data: restsData, error: restsError } = await supabase
+        .from('restaurants')
+        .select('id, name, slug, email')
+        .order('name');
+
+      if (restsError) throw restsError;
+      setRestaurants(restsData || []);
+
+      // Load active packages
+      const { data: pkgsData, error: pkgsError } = await supabase
+        .from('subscription_packages')
+        .select('name, price_monthly, price_yearly')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (pkgsError) throw pkgsError;
+      setPackages(pkgsData || []);
+
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenDialog = (sub?: RestaurantSubscription) => {
+    if (sub) {
+      setEditingSubscription(sub);
+      setFormData({
+        restaurant_id: sub.restaurant_id,
+        package_name: sub.package_name,
+        status: sub.status,
+        started_at: sub.started_at || '',
+        expires_at: sub.expires_at || '',
+        billing_cycle: sub.billing_cycle || 'monthly',
+        amount_paid: sub.amount_paid?.toString() || '',
+        notes: sub.notes || ''
+      });
+    } else {
+      setEditingSubscription(null);
+      setFormData({
+        restaurant_id: '',
+        package_name: '',
+        status: 'active',
+        started_at: new Date().toISOString().split('T')[0],
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        billing_cycle: 'monthly',
+        amount_paid: '',
+        notes: ''
+      });
+    }
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const subscriptionData = {
+        restaurant_id: formData.restaurant_id,
+        package_name: formData.package_name,
+        status: formData.status,
+        started_at: formData.started_at || null,
+        expires_at: formData.expires_at || null,
+        billing_cycle: formData.billing_cycle,
+        amount_paid: formData.amount_paid ? parseFloat(formData.amount_paid) : null,
+        notes: formData.notes || null
+      };
+
+      if (editingSubscription) {
+        const { error } = await (supabase as any)
+          .from('restaurant_subscriptions')
+          .update(subscriptionData)
+          .eq('id', editingSubscription.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Subscription updated successfully",
+        });
+      } else {
+        const { error } = await (supabase as any)
+          .from('restaurant_subscriptions')
+          .insert([subscriptionData]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Subscription created successfully",
+        });
+      }
+
+      setIsDialogOpen(false);
+      loadData();
+    } catch (error: any) {
+      console.error('Error saving subscription:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save subscription",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, restaurantName: string) => {
+    if (!confirm(`Are you sure you want to delete the subscription for "${restaurantName}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await (supabase as any)
+        .from('restaurant_subscriptions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Subscription deleted successfully",
+      });
+
+      loadData();
+    } catch (error: any) {
+      console.error('Error deleting subscription:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete subscription",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'expired':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <XCircle className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const colors = {
+      active: 'bg-green-100 text-green-800',
+      expired: 'bg-red-100 text-red-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      cancelled: 'bg-gray-100 text-gray-800',
+      suspended: 'bg-orange-100 text-orange-800'
+    };
+    return colors[status as keyof typeof colors] || colors.cancelled;
+  };
+
+  const getDaysUntilExpiry = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const days = Math.floor((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  if (loading && subscriptions.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Store className="h-8 w-8" />
+          Restaurant Subscriptions
+        </h1>
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Store className="h-8 w-8" />
+            Restaurant Subscriptions
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage restaurant subscription packages and access
+          </p>
+        </div>
+        <Button onClick={() => handleOpenDialog()}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Subscription
+        </Button>
+      </div>
+
+      {/* Subscriptions Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Subscriptions ({subscriptions.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {subscriptions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No subscriptions yet. Click "Add Subscription" to create one.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {subscriptions.map((sub) => {
+                  const daysLeft = getDaysUntilExpiry(sub.expires_at);
+                  const isExpiringSoon = daysLeft !== null && daysLeft <= 7 && daysLeft > 0;
+
+                  return (
+                    <div key={sub.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            {getStatusIcon(sub.status)}
+                            <h3 className="font-semibold text-lg">
+                              {sub.restaurant.name}
+                            </h3>
+                            <span className={`text-xs px-2 py-1 rounded ${getStatusBadge(sub.status)}`}>
+                              {sub.status}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <div className="text-muted-foreground">Package</div>
+                              <div className="font-medium">{sub.package_name}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Started</div>
+                              <div className="font-medium">
+                                {sub.started_at ? new Date(sub.started_at).toLocaleDateString() : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Expires</div>
+                              <div className={`font-medium ${isExpiringSoon ? 'text-orange-600' : ''}`}>
+                                {sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : 'Never'}
+                                {daysLeft !== null && daysLeft > 0 && (
+                                  <span className="text-xs ml-1">({daysLeft}d left)</span>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Billing</div>
+                              <div className="font-medium capitalize">{sub.billing_cycle || 'N/A'}</div>
+                            </div>
+                          </div>
+
+                          {sub.notes && (
+                            <div className="mt-2 text-sm text-muted-foreground">
+                              <strong>Notes:</strong> {sub.notes}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenDialog(sub)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(sub.id, sub.restaurant.name)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSubscription ? 'Edit Subscription' : 'Add New Subscription'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingSubscription
+                ? 'Update the subscription details'
+                : 'Assign a subscription package to a restaurant'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Restaurant Selection */}
+            <div>
+              <Label htmlFor="restaurant_id">Restaurant *</Label>
+              <Select
+                value={formData.restaurant_id}
+                onValueChange={(value) => setFormData({ ...formData, restaurant_id: value })}
+                disabled={!!editingSubscription}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select restaurant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {restaurants.map((restaurant) => (
+                    <SelectItem key={restaurant.id} value={restaurant.id}>
+                      {restaurant.name} ({restaurant.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Package Selection */}
+            <div>
+              <Label htmlFor="package_name">Package *</Label>
+              <Select
+                value={formData.package_name}
+                onValueChange={(value) => setFormData({ ...formData, package_name: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select package" />
+                </SelectTrigger>
+                <SelectContent>
+                  {packages.map((pkg) => (
+                    <SelectItem key={pkg.name} value={pkg.name}>
+                      {pkg.name} - {pkg.price_monthly.toLocaleString()} RWF/month
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Status */}
+              <div>
+                <Label htmlFor="status">Status *</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Billing Cycle */}
+              <div>
+                <Label htmlFor="billing_cycle">Billing Cycle</Label>
+                <Select
+                  value={formData.billing_cycle}
+                  onValueChange={(value) => setFormData({ ...formData, billing_cycle: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                    <SelectItem value="lifetime">Lifetime</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Start Date */}
+              <div>
+                <Label htmlFor="started_at">Start Date</Label>
+                <Input
+                  id="started_at"
+                  type="date"
+                  value={formData.started_at}
+                  onChange={(e) => setFormData({ ...formData, started_at: e.target.value })}
+                />
+              </div>
+
+              {/* Expiry Date */}
+              <div>
+                <Label htmlFor="expires_at">Expiry Date</Label>
+                <Input
+                  id="expires_at"
+                  type="date"
+                  value={formData.expires_at}
+                  onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Amount Paid */}
+            <div>
+              <Label htmlFor="amount_paid">Amount Paid (RWF)</Label>
+              <Input
+                id="amount_paid"
+                type="number"
+                step="0.01"
+                value={formData.amount_paid}
+                onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
+                placeholder="15000"
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Input
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes..."
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading || !formData.restaurant_id || !formData.package_name}>
+                {loading ? 'Saving...' : editingSubscription ? 'Update Subscription' : 'Create Subscription'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default RestaurantSubscriptions;

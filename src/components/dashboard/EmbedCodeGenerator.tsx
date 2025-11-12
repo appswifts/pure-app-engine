@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Code, 
@@ -116,18 +117,21 @@ export default function EmbedCodeGenerator({ restaurant }: EmbedCodeGeneratorPro
   const previewDimensions = getPreviewDimensions();
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="embed-code" className="border rounded-lg">
+        <AccordionTrigger className="px-6 hover:no-underline">
+          <div className="flex items-center gap-2">
             <Code className="h-5 w-5" />
-            Embed Code Generator
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Generate embed codes to display your menu on any website
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
+            <div className="text-left">
+              <div className="font-semibold">Embed Code Generator</div>
+              <p className="text-sm text-muted-foreground font-normal">
+                Generate embed codes to display your menu on any website
+              </p>
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="px-6 pb-6 space-y-6">
           {/* Configuration */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -326,18 +330,15 @@ export default function EmbedCodeGenerator({ restaurant }: EmbedCodeGeneratorPro
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Integration Guide */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Integration Guide
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <Separator />
+
+          {/* Integration Guide */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Integration Guide
+            </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <h4 className="font-semibold">Popular Platforms</h4>
@@ -405,8 +406,10 @@ export default function EmbedCodeGenerator({ restaurant }: EmbedCodeGeneratorPro
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
