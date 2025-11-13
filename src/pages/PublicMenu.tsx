@@ -249,26 +249,54 @@ const PublicMenu = () => {
           )
         `)
         .eq('user_id', restaurantData.user_id)
-        .in('status', ['active', 'pending'])
+        .in('status', ['active', 'pending', 'cancelled']) // Include cancelled subscriptions
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      // Check if subscription exists and allows menu access
-      const hasActiveSubscription = subscriptionData && (
-        subscriptionData.status === 'active' ||
-        (
-          subscriptionData.status === 'expired' &&
-          subscriptionData.expires_at &&
-          new Date(subscriptionData.expires_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        )
-      );
+      // Enhanced subscription check logic
+      // 1. First check if subscription exists and is active
+      // Cancelled subscriptions should NEVER be considered active
+      const hasActiveSubscription = subscriptionData && 
+        subscriptionData.status !== 'cancelled' && (
+          subscriptionData.status === 'active' ||
+          (
+            subscriptionData.status === 'pending' &&
+            subscriptionData.started_at &&
+            new Date(subscriptionData.started_at) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          ) ||
+          (
+            subscriptionData.status === 'expired' &&
+            subscriptionData.expires_at &&
+            new Date(subscriptionData.expires_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          )
+        );
 
-      const packageAllowsMenuAccess = subscriptionData?.package?.feature_public_menu_access === true;
+      // 2. Check if subscription package allows public menu access
+      // Don't allow access for cancelled subscriptions even if their package allows it
+      const packageAllowsMenuAccess = 
+        (subscriptionData?.status !== 'cancelled' && subscriptionData?.package?.feature_public_menu_access === true) || 
+        (!subscriptionData && process.env.NODE_ENV === 'development'); // Allow access in dev if no subscription data
+      
+      console.log('Subscription check:', { 
+        hasActiveSubscription, 
+        packageAllowsMenuAccess,
+        subscriptionData: subscriptionData ? {
+          status: subscriptionData.status,
+          package: subscriptionData.package?.feature_public_menu_access
+        } : 'No subscription data'
+      });
+
+      // 3. Override access for specific restaurants if needed (for compatibility)
+      // But never allow access if subscription is explicitly cancelled
+      const forceAccess = subscriptionData?.status !== 'cancelled' && 
+                        (restaurantData?.is_menu_active === true || 
+                         process.env.NODE_ENV === 'development');
       
       // When user has an active subscription, all their restaurant menus should be live
       // regardless of their explicit is_menu_active setting
-      const isMenuAccessible = hasActiveSubscription && packageAllowsMenuAccess;
+      // But NEVER allow access if subscription is cancelled
+      const isMenuAccessible = hasActiveSubscription || forceAccess;
       
       // Update the restaurant's is_menu_active flag in memory to reflect subscription status
       if (restaurantData) {
@@ -278,19 +306,50 @@ const PublicMenu = () => {
       if (!isMenuAccessible) {
         setRestaurant(restaurantData as Restaurant);
         let message = 'This menu is currently unavailable.';
+        let reason = '';
+        let status = '';
+        let showPaymentButton = true;
+        let paymentAction = 'subscribe';
         
         if (!subscriptionData) {
-          message = 'The restaurant owner does not have an active subscription. Please contact them for more information.';
+          message = 'The restaurant owner needs to activate their subscription.';
+          reason = 'This restaurant requires a valid subscription';
+          status = 'no_subscription';
         } else if (!packageAllowsMenuAccess) {
-          message = 'The restaurant owner\'s subscription plan does not include public menu access.';
-        } else if (!hasActiveSubscription) {
-          message = 'The restaurant owner\'s subscription has expired. Please ask them to renew their subscription.';
+          message = 'The restaurant owner\'s subscription plan needs an upgrade.';
+          reason = 'Current plan does not include public menu access';
+          status = 'plan_limitation';
+          paymentAction = 'upgrade';
+        } else if (subscriptionData.status === 'expired') {
+          message = 'The restaurant owner\'s subscription has expired.';
+          reason = 'Subscription expired and needs renewal';
+          status = 'trial_expired';
+          paymentAction = 'reactivate';
+        } else if (subscriptionData.status === 'cancelled') {
+          message = 'The restaurant owner\'s subscription has been cancelled by an admin.';
+          reason = 'Subscription has been cancelled and requires reactivation';
+          status = 'cancelled';
+          paymentAction = 'reactivate';
+        } else if (subscriptionData.status === 'pending') {
+          message = 'The restaurant owner\'s subscription is pending activation.';
+          reason = 'Subscription payment is being processed';
+          status = 'pending_payment';
+          paymentAction = 'complete_payment';
+        } else {
+          message = 'The restaurant\'s subscription status is invalid.';
+          reason = 'Subscription status needs to be reviewed by admin';
+          status = 'canceled';
         }
         
         setAccessInfo({ 
           hasAccess: false, 
           restaurant: restaurantData as Restaurant,
-          message
+          message,
+          reason,
+          status,
+          showPaymentButton,
+          paymentAction,
+          urgent: status === 'expired' || status === 'pending_payment'
         });
         setLoading(false);
         return;

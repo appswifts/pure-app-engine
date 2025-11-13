@@ -27,9 +27,12 @@ export const RestrictedMenuView: React.FC<RestrictedMenuViewProps> = ({
       case 'pending_payment':
         return <CreditCard className="h-6 w-6 text-orange-500" />;
       case 'trial_expired':
+      case 'expired':
         return <Clock className="h-6 w-6 text-red-500" />;
       case 'past_due':
         return <AlertTriangle className="h-6 w-6 text-red-500" />;
+      case 'plan_limitation':
+        return <Package className="h-6 w-6 text-purple-500" />;
       case 'canceled':
         return <Package className="h-6 w-6 text-gray-500" />;
       case 'no_subscription':
@@ -44,8 +47,11 @@ export const RestrictedMenuView: React.FC<RestrictedMenuViewProps> = ({
       case 'pending_payment':
         return 'bg-orange-500';
       case 'trial_expired':
+      case 'expired':
       case 'past_due':
         return 'bg-red-500';
+      case 'plan_limitation':
+        return 'bg-purple-500';
       case 'canceled':
         return 'bg-gray-500';
       case 'no_subscription':
@@ -122,7 +128,15 @@ export const RestrictedMenuView: React.FC<RestrictedMenuViewProps> = ({
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Menu Access Restricted</AlertTitle>
               <AlertDescription className="text-sm">
-                {accessInfo.reason}. Complete your subscription to view the full digital menu.
+                {accessInfo.reason || 'This menu requires an active subscription'}. 
+                {accessInfo.paymentAction === 'complete_payment' ? 
+                  'Complete your subscription payment to view the full digital menu.' : 
+                  accessInfo.paymentAction === 'reactivate' ? 
+                    'Reactivate your subscription to view the full digital menu.' :
+                    accessInfo.paymentAction === 'upgrade' ?
+                      'Upgrade your subscription plan to include public menu access.' :
+                      'Subscribe now to view the full digital menu.'
+                }
               </AlertDescription>
             </Alert>
 
@@ -132,7 +146,10 @@ export const RestrictedMenuView: React.FC<RestrictedMenuViewProps> = ({
                 <Button 
                   onClick={handlePaymentClick}
                   size="lg"
-                  className={`w-full ${accessInfo.urgent ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  className={`w-full ${accessInfo.urgent ? 'bg-orange-600 hover:bg-orange-700' : 
+                    accessInfo.status === 'plan_limitation' ? 'bg-purple-600 hover:bg-purple-700' :
+                    accessInfo.status === 'expired' || accessInfo.status === 'trial_expired' ? 'bg-red-600 hover:bg-red-700' :
+                    'bg-blue-600 hover:bg-blue-700'}`}
                 >
                   <CreditCard className="h-5 w-5 mr-2" />
                   {getPaymentButtonText()}

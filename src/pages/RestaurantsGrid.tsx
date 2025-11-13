@@ -187,16 +187,169 @@ const RestaurantsGrid = () => {
     if (!restaurantToDelete) return;
 
     try {
-      const { error } = await supabase
+      setLoading(true);
+      
+      // Show a loading toast
+      toast({
+        title: "Deleting Restaurant",
+        description: "Removing restaurant and all related data...",
+      });
+      
+      // 1. First delete orders related to this restaurant
+      const { error: ordersError } = await (supabase as any)
+        .from("orders")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (ordersError) {
+        console.error("Error deleting orders:", ordersError);
+      } else {
+        console.log("✓ Orders deleted");
+      }
+
+      // 2. Delete order analytics
+      const { error: orderAnalyticsError } = await (supabase as any)
+        .from("order_analytics")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (orderAnalyticsError) {
+        console.error("Error deleting order analytics:", orderAnalyticsError);
+      } else {
+        console.log("✓ Order analytics deleted");
+      }
+
+      // 3. Delete payment requests
+      const { error: paymentRequestsError } = await (supabase as any)
+        .from("payment_requests")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (paymentRequestsError) {
+        console.error("Error deleting payment requests:", paymentRequestsError);
+      } else {
+        console.log("✓ Payment requests deleted");
+      }
+
+      // 4. Delete admin notifications
+      const { error: adminNotificationsError } = await (supabase as any)
+        .from("admin_notifications")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (adminNotificationsError) {
+        console.error("Error deleting admin notifications:", adminNotificationsError);
+      } else {
+        console.log("✓ Admin notifications deleted");
+      }
+
+      // 5. Delete WhatsApp notifications
+      const { error: whatsappNotificationsError } = await (supabase as any)
+        .from("whatsapp_notifications")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (whatsappNotificationsError) {
+        console.error("Error deleting WhatsApp notifications:", whatsappNotificationsError);
+      } else {
+        console.log("✓ WhatsApp notifications deleted");
+      }
+      
+      // 6. Delete menu items related to this restaurant
+      const { error: menuItemsError } = await (supabase as any)
+        .from("menu_items")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (menuItemsError) {
+        console.error("Error deleting menu items:", menuItemsError);
+      } else {
+        console.log("✓ Menu items deleted");
+      }
+
+      // 7. Delete item variations
+      const { error: variationsError } = await (supabase as any)
+        .from("item_variations")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (variationsError) {
+        console.error("Error deleting variations:", variationsError);
+      } else {
+        console.log("✓ Item variations deleted");
+      }
+      
+      // 8. Delete accompaniments
+      const { error: accompanimentsError } = await (supabase as any)
+        .from("accompaniments")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (accompanimentsError) {
+        console.error("Error deleting accompaniments:", accompanimentsError);
+      } else {
+        console.log("✓ Accompaniments deleted");
+      }
+
+      // 9. Delete categories
+      const { error: categoriesError } = await (supabase as any)
+        .from("categories")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (categoriesError) {
+        console.error("Error deleting categories:", categoriesError);
+      } else {
+        console.log("✓ Categories deleted");
+      }
+
+      // 10. Delete menu groups
+      const { error: menuGroupsError } = await (supabase as any)
+        .from("menu_groups")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (menuGroupsError) {
+        console.error("Error deleting menu groups:", menuGroupsError);
+      } else {
+        console.log("✓ Menu groups deleted");
+      }
+
+      // 11. Delete tables
+      const { error: tablesError } = await (supabase as any)
+        .from("tables")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (tablesError) {
+        console.error("Error deleting tables:", tablesError);
+      } else {
+        console.log("✓ Tables deleted");
+      }
+
+      // 12. Delete QR codes
+      const { error: qrCodesError } = await (supabase as any)
+        .from("saved_qr_codes")
+        .delete()
+        .eq("restaurant_id", restaurantToDelete.id);
+      
+      if (qrCodesError) {
+        console.error("Error deleting QR codes:", qrCodesError);
+      } else {
+        console.log("✓ QR codes deleted");
+      }
+
+      // 13. Finally, delete the restaurant itself
+      const { error: restaurantError } = await (supabase as any)
         .from("restaurants")
         .delete()
         .eq("id", restaurantToDelete.id);
 
-      if (error) throw error;
+      if (restaurantError) throw restaurantError;
 
       toast({
         title: "Success",
-        description: "Restaurant deleted successfully",
+        description: "Restaurant and all related data deleted successfully",
       });
 
       setRestaurantToDelete(null);
@@ -207,6 +360,8 @@ const RestaurantsGrid = () => {
         description: error.message || "Failed to delete restaurant",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
