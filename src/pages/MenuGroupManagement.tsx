@@ -440,9 +440,12 @@ export default function MenuGroupManagement() {
     priceRange[0] !== priceExtent.min || priceRange[1] !== priceExtent.max;
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-RW", {
+    // Use the menu group's currency if available, fallback to RWF
+    const currency = menuGroup?.currency || "RWF";
+    
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "RWF",
+      currency: currency,
       minimumFractionDigits: 0,
     }).format(price);
   };

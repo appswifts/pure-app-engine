@@ -517,9 +517,12 @@ const PublicMenu = () => {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-RW", {
+    // Use the menu group's currency if available, fallback to RWF
+    const currency = selectedMenuGroup?.currency || "RWF";
+    
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "RWF",
+      currency: currency,
       minimumFractionDigits: 0,
     }).format(price);
   };

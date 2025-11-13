@@ -29,7 +29,8 @@ const MenuGroupManager = ({ restaurantId, onMenuGroupSelect, selectedMenuGroupId
   const [formData, setFormData] = useState({ 
     name: "", 
     description: "",
-    is_active: true 
+    is_active: true,
+    currency: "RWF" 
   });
   const { toast } = useToast();
 
@@ -78,7 +79,8 @@ const MenuGroupManager = ({ restaurantId, onMenuGroupSelect, selectedMenuGroupId
           .update({ 
             name: formData.name.trim(),
             description: formData.description.trim() || null,
-            is_active: formData.is_active
+            is_active: formData.is_active,
+            currency: formData.currency
           })
           .eq("id", editingGroup.id);
 
@@ -97,7 +99,8 @@ const MenuGroupManager = ({ restaurantId, onMenuGroupSelect, selectedMenuGroupId
             description: formData.description.trim() || null,
             restaurant_id: restaurantId,
             display_order: menuGroups.length,
-            is_active: formData.is_active
+            is_active: formData.is_active,
+            currency: formData.currency
           });
 
         if (error) throw error;
@@ -125,7 +128,8 @@ const MenuGroupManager = ({ restaurantId, onMenuGroupSelect, selectedMenuGroupId
     setFormData({ 
       name: group.name,
       description: group.description || "",
-      is_active: group.is_active ?? true
+      is_active: group.is_active ?? true,
+      currency: (group as any).currency || "RWF"
     });
     setIsDialogOpen(true);
   };
@@ -167,7 +171,7 @@ const MenuGroupManager = ({ restaurantId, onMenuGroupSelect, selectedMenuGroupId
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingGroup(null);
-    setFormData({ name: "", description: "", is_active: true });
+    setFormData({ name: "", description: "", is_active: true, currency: "RWF" });
   };
 
   const toggleActive = async (groupId: string, currentStatus: boolean) => {
@@ -260,6 +264,24 @@ const MenuGroupManager = ({ restaurantId, onMenuGroupSelect, selectedMenuGroupId
                   checked={formData.is_active}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="currency">Currency</Label>
+                <select
+                  id="currency"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={formData.currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                >
+                  <option value="RWF">RWF - Rwandan Franc</option>
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="KES">KES - Kenyan Shilling</option>
+                  <option value="UGX">UGX - Ugandan Shilling</option>
+                  <option value="TZS">TZS - Tanzanian Shilling</option>
+                </select>
               </div>
               
               <div className="flex justify-end gap-3">
