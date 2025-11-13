@@ -12,42 +12,42 @@ export function Features() {
                 <div className="relative mx-auto grid max-w-2xl lg:max-w-4xl divide-x divide-y border border-gray-200 dark:border-gray-700 dark:divide-gray-700 *:p-12 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                            <QrCode className="size-4 text-orange-500" />
+                            <QrCode className="size-4 text-gray-600 dark:text-gray-400" />
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Instant QR Codes</h3>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300">Generate unique QR codes for each table. Customers scan and see your menu instantly without any app downloads.</p>
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <MessageSquare className="size-4 text-green-500" />
+                            <MessageSquare className="size-4 text-gray-600 dark:text-gray-400" />
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">WhatsApp Orders</h3>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300">Customers order directly via WhatsApp with pre-filled messages. Seamless ordering experience for everyone.</p>
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <Zap className="size-4 text-yellow-500" />
+                            <Zap className="size-4 text-gray-600 dark:text-gray-400" />
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Lightning Fast</h3>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300">Set up your entire menu in minutes. Beautiful, mobile-optimized design out of the box.</p>
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <Smartphone className="size-4 text-blue-500" />
+                            <Smartphone className="size-4 text-gray-600 dark:text-gray-400" />
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Mobile Optimized</h3>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300">Perfect responsive design that works flawlessly on all devices. Your menu looks great everywhere.</p>
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <BarChart3 className="size-4 text-purple-500" />
+                            <BarChart3 className="size-4 text-gray-600 dark:text-gray-400" />
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Analytics & Insights</h3>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300">Track menu performance, popular items, and customer behavior to optimize your restaurant operations.</p>
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                            <Shield className="size-4 text-red-500" />
+                            <Shield className="size-4 text-gray-600 dark:text-gray-400" />
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Secure & Reliable</h3>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300">Enterprise-grade security with 99.9% uptime. Your menu is always available when customers need it.</p>
