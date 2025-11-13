@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Plus, Edit, Trash2, CheckCircle, XCircle, Clock, Store } from 'lucide-react';
+import { updateSubscriptionAndActivateMenus } from '@/utils/subscriptionHelpers';
 import {
   Dialog,
   DialogContent,
@@ -146,7 +147,7 @@ const UserSubscriptions: React.FC = () => {
       // Load all unique users from restaurants table (for dropdown)
       const { data: restaurantsData, error: restsError } = await supabase
         .from('restaurants')
-        .select('user_id, email, name')
+        .select('user_id, email')
         .order('created_at', { ascending: false });
 
       if (restsError) throw restsError;
@@ -157,8 +158,7 @@ const UserSubscriptions: React.FC = () => {
         if (!uniqueUsers.has(restaurant.user_id)) {
           uniqueUsers.set(restaurant.user_id, {
             id: restaurant.user_id,
-            email: restaurant.email,
-            name: restaurant.name
+            email: restaurant.email
           });
         }
       });
@@ -311,30 +311,30 @@ const UserSubscriptions: React.FC = () => {
     }
 
     try {
-      const updateData: any = {
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      };
-
-      // If approving, set started_at to now if not already set
-      if (newStatus === 'active') {
-        updateData.started_at = new Date().toISOString();
-        updateData.notes = 'Subscription approved by admin';
-      } else if (newStatus === 'cancelled') {
-        updateData.notes = 'Subscription rejected by admin';
-      }
-
-      const { error } = await (supabase as any)
+      // Get the subscription to find user_id
+      const { data: subscriptionData, error: subFetchError } = await (supabase as any)
         .from('user_subscriptions')
-        .update(updateData)
-        .eq('id', id);
+        .select('user_id')
+        .eq('id', id)
+        .single();
 
-      if (error) throw error;
+      if (subFetchError) throw subFetchError;
 
-      toast({
-        title: "Success",
-        description: `Subscription ${statusText}d successfully`,
-      });
+      // Use our utility function to update subscription and activate restaurant menus
+      const result = await updateSubscriptionAndActivateMenus(
+        id,
+        newStatus as 'active' | 'pending' | 'expired' | 'cancelled',
+        subscriptionData.user_id
+      );
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+      } else {
+        throw new Error(result.error?.message || 'Failed to update subscription');
+      }
 
       loadData(); // Refresh the list
     } catch (error: any) {
@@ -570,13 +570,13 @@ const UserSubscriptions: React.FC = () => {
                 <SelectContent>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.email} {user.name ? `(${user.name})` : ''}
+                      {user.email}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Users who have created restaurants
+                Select user by email. When subscription is activated, all their restaurants become public.
               </p>
             </div>
 

@@ -18,6 +18,15 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Animation delay utilities for gradient bar hero */
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

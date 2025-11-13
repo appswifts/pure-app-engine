@@ -23,9 +23,12 @@ export default {
 			fontFamily: {
 				sans: ['Work Sans', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Arial', 'sans-serif'],
 				display: ['Work Sans', 'sans-serif'],
+				space: ['Space Grotesk', 'system-ui', 'sans-serif'],
+				inter: ['Inter', 'system-ui', 'sans-serif'],
+				instrument: ['Instrument Serif', 'serif'],
 			},
 			colors: {
-				'primary-green': '#38e07b',
+				'primary-green': '#FC8007',
 				'background-light': '#f6f8f7',
 				'background-dark': '#122017',
 				border: 'hsl(var(--border))',
@@ -102,11 +105,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fadeIn': {
+					'0%': { opacity: '0', transform: 'translateY(10px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				'pulseBar': {
+					'0%': { transform: 'scaleY(1)' },
+					'100%': { transform: 'scaleY(1.1)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fadeIn': 'fadeIn 0.6s ease-out forwards',
+				'pulseBar': 'pulseBar 2s ease-in-out infinite alternate'
 			}
 		}
 	},

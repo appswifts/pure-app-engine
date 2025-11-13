@@ -6,6 +6,7 @@ import AdminOverview from "@/components/admin/AdminOverview";
 import AdminSettings from "@/components/admin/AdminSettings";
 import SubscriptionPackages from "@/pages/admin/SubscriptionPackages";
 import UserSubscriptions from "@/pages/admin/UserSubscriptions";
+import CacheClear from "@/pages/admin/CacheClear";
 import { Menu as MenuIcon, X, LogOut } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -20,6 +21,7 @@ const AdminDashboard = () => {
     if (path === '/admin/packages') return 'packages';
     if (path === '/admin/subscriptions') return 'subscriptions';
     if (path === '/admin/settings') return 'settings';
+    if (path === '/admin/cache') return 'cache';
     return 'overview';
   };
   
@@ -34,6 +36,7 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Dashboard', materialIcon: 'dashboard' },
     { id: 'packages', label: 'Subscription Packages', materialIcon: 'card_membership' },
     { id: 'subscriptions', label: 'User Subscriptions', materialIcon: 'people' },
+    { id: 'cache', label: 'Cache Management', materialIcon: 'refresh' },
     { id: 'settings', label: 'Settings', materialIcon: 'settings' }
   ];
 
@@ -50,6 +53,8 @@ const AdminDashboard = () => {
         return <SubscriptionPackages />;
       case 'subscriptions':
         return <UserSubscriptions />;
+      case 'cache':
+        return <CacheClear />;
       case 'settings':
         return <AdminSettings />;
       default:

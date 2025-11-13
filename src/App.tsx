@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import '@/utils/cacheDebugger'; // Initialize cache debugger
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { HeroUIProvider } from "@heroui/react";
@@ -266,6 +267,14 @@ const App = () => {
                     />
                     <Route
                       path="/admin/settings"
+                      element={
+                        <ProtectedRoute adminOnly>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/cache"
                       element={
                         <ProtectedRoute adminOnly>
                           <AdminDashboard />

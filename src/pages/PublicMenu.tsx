@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import RestrictedMenuView from "@/components/RestrictedMenuView";
 import { SafeImage } from "@/components/ui/safe-image";
 import { supabaseCache } from "@/lib/supabaseCache";
+import CacheStatusIndicator from "@/components/CacheStatusIndicator";
 
 // ===== INTERFACES =====
 interface Restaurant {
@@ -256,7 +257,6 @@ const PublicMenu = () => {
       // Check if subscription exists and allows menu access
       const hasActiveSubscription = subscriptionData && (
         subscriptionData.status === 'active' ||
-        subscriptionData.status === 'pending' ||
         (
           subscriptionData.status === 'expired' &&
           subscriptionData.expires_at &&
@@ -266,7 +266,14 @@ const PublicMenu = () => {
 
       const packageAllowsMenuAccess = subscriptionData?.package?.feature_public_menu_access === true;
       
+      // When user has an active subscription, all their restaurant menus should be live
+      // regardless of their explicit is_menu_active setting
       const isMenuAccessible = hasActiveSubscription && packageAllowsMenuAccess;
+      
+      // Update the restaurant's is_menu_active flag in memory to reflect subscription status
+      if (restaurantData) {
+        restaurantData.is_menu_active = isMenuAccessible;  
+      }
 
       if (!isMenuAccessible) {
         setRestaurant(restaurantData as Restaurant);
@@ -931,6 +938,9 @@ const PublicMenu = () => {
         )}
       </div>
       )}
+
+      {/* Cache Status Indicator (only shows in debug mode) */}
+      <CacheStatusIndicator restaurantSlug={restaurantSlug} />
     </div>
   );
 };
