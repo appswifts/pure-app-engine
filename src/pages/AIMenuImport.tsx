@@ -35,6 +35,7 @@ import {
 interface Restaurant {
   id: string;
   name: string;
+  slug?: string;
 }
 
 interface MenuGroup {
@@ -110,7 +111,7 @@ export default function AIMenuImport() {
 
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name')
+        .select('id, name, slug')
         .eq('user_id', user.id)
         .order('name');
 
@@ -452,15 +453,35 @@ export default function AIMenuImport() {
     if (selectedMenuGroup) {
       // Find the selected menu group to get its slug
       const menuGroup = menuGroups.find(g => g.id === selectedMenuGroup);
-      if (menuGroup?.slug) {
-        // Navigate using the clean slug URL
-        navigate(`/dashboard/menu-groups/${menuGroup.slug}`);
-      } else {
-        // Fallback if no slug found
-        navigate('/dashboard/menu');
+      console.log('Selected menu group:', menuGroup);
+      
+      // Find the selected restaurant to get its slug
+      const restaurant = restaurants.find(r => r.id === selectedRestaurant);
+      console.log('Selected restaurant:', restaurant);
+      
+      if (menuGroup?.slug && restaurant) {
+        // Use the existing restaurant slug if available, otherwise create one from the name
+        const restaurantSlug = restaurant.slug || 
+          (restaurant.name ? restaurant.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : '');
+        
+        console.log(`Navigating to: /dashboard/restaurant/${restaurantSlug}/group/${menuGroup.slug}`);
+        
+        if (restaurantSlug) {
+          // Navigate using the new URL format with both slugs
+          navigate(`/dashboard/restaurant/${restaurantSlug}/group/${menuGroup.slug}`);
+          toast.success(`Opening menu group: ${menuGroup.name}`);
+          return;
+        }
       }
+      
+      // Fallback if no slugs found
+      console.log('Falling back to general menu page');
+      toast.info('Opening general menu page');
+      navigate('/dashboard/menu');
     } else {
       // Fallback to general menu page
+      console.log('No menu group selected');
+      toast.info('Opening general menu page');
       navigate('/dashboard/menu');
     }
   };

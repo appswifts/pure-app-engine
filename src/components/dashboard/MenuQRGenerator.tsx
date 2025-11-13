@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import QRCode from "qrcode";
+import { BASE_URL, QR_CODE_OPTIONS } from "@/lib/constants";
 import {
   Accordion,
   AccordionContent,
@@ -121,14 +122,7 @@ const MenuQRGenerator = () => {
   };
 
   const generateQRCodeDataUrl = async (url: string): Promise<string> => {
-    return await QRCode.toDataURL(url, {
-      width: 400,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
-    });
+    return await QRCode.toDataURL(url, QR_CODE_OPTIONS);
   };
 
   const handleGenerateSingleGroup = async () => {
@@ -148,7 +142,7 @@ const MenuQRGenerator = () => {
       
       if (!selectedGroup || !selectedTable) return;
 
-      const url = `${window.location.origin}/public-menu/${restaurantSlug}/${selectedTable.slug}?group=${selectedGroupId}`;
+      const url = `${BASE_URL}/public-menu/${restaurantSlug}/${selectedTable.slug}?group=${selectedGroupId}`;
       const dataUrl = await generateQRCodeDataUrl(url);
 
       setQRCodes(prev => ({
@@ -192,7 +186,7 @@ const MenuQRGenerator = () => {
       if (!selectedTable) return;
 
       const groupParams = selectedGroupIds.join(',');
-      const url = `${window.location.origin}/menu-select/${restaurantSlug}/${selectedTable.slug}?groups=${groupParams}`;
+      const url = `${BASE_URL}/menu-select/${restaurantSlug}/${selectedTable.slug}?groups=${groupParams}`;
       const dataUrl = await generateQRCodeDataUrl(url);
 
       const selectedNames = menuGroups
@@ -240,7 +234,7 @@ const MenuQRGenerator = () => {
       const selectedTable = tables.find(t => t.id === selectedTableId);
       if (!selectedTable) return;
 
-      const url = `${window.location.origin}/public-menu/${restaurantSlug}/${selectedTable.slug}?mode=full`;
+      const url = `${BASE_URL}/public-menu/${restaurantSlug}/${selectedTable.slug}?mode=full`;
       const dataUrl = await generateQRCodeDataUrl(url);
 
       setQRCodes(prev => ({

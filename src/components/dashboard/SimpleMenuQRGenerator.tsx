@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import QRCode from "qrcode";
+import { BASE_URL, QR_CODE_OPTIONS } from "@/lib/constants";
 import {
   Select,
   SelectContent,
@@ -92,18 +93,10 @@ const SimpleMenuQRGenerator = () => {
       if (!selectedTable) return;
 
       // Simple URL - /menu/{restaurant}/{table}
-      const baseUrl = window.location.origin;
-      const menuUrl = `${baseUrl}/menu/${restaurantSlug}/${selectedTable.slug}`;
+      const menuUrl = `${BASE_URL}/menu/${restaurantSlug}/${selectedTable.slug}`;
 
       // Generate QR code
-      const dataUrl = await QRCode.toDataURL(menuUrl, {
-        width: 400,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+      const dataUrl = await QRCode.toDataURL(menuUrl, QR_CODE_OPTIONS);
 
       setQRCodeUrl(menuUrl);
       setQRCodeDataUrl(dataUrl);

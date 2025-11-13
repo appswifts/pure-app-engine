@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import QRCodeLib from "qrcode";
+import { BASE_URL, QR_CODE_OPTIONS } from "@/lib/constants";
 
 interface TableData {
   id: string;
@@ -372,18 +373,10 @@ const TablesAndQR = () => {
       
       if (!selectedTable) return;
 
-      const baseUrl = window.location.origin;
-      const menuUrl = `${baseUrl}/menu/${restaurantSlug}/${selectedTable.slug}`;
+      const menuUrl = `${BASE_URL}/menu/${restaurantSlug}/${selectedTable.slug}`;
 
       // Generate QR code
-      const qrDataUrl = await QRCodeLib.toDataURL(menuUrl, {
-        width: 400,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+      const qrDataUrl = await QRCodeLib.toDataURL(menuUrl, QR_CODE_OPTIONS);
 
       // Save to database (table_id is required, type must be 'single', 'multi', or 'full')
       // @ts-ignore - saved_qr_codes not in generated types

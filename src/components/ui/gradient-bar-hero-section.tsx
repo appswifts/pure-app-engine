@@ -46,60 +46,14 @@ const TrustElements: React.FC = () => {
 };
 
 const WaitlistForm: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes('@')) return;
-
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      setEmail('');
-      
-      setTimeout(() => {
-        setIsSubmitted(false);
-      }, 3000);
-    }, 1500);
-  };
-
   return (
-    <div className="relative z-10 w-full">
-      {!isSubmitted ? (
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter Your Email"
-            className="flex-1 px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-gray-900/60 border border-gray-700 focus:border-white outline-none text-white text-sm sm:text-base shadow-[0_0_15px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-all duration-300 font-space placeholder-gray-400"
-            required
-          />
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 whitespace-nowrap text-sm sm:text-base font-space ${
-              isSubmitting 
-                ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
-                : 'bg-white hover:bg-gray-100 text-black'
-            }`}
-          >
-            {isSubmitting ? (
-              <div className="h-4 w-4 sm:h-5 sm:w-5 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-            ) : (
-              'Get Started Free'
-            )}
-          </button>
-        </form>
-      ) : (
-        <div className="bg-green-500/20 border border-green-500/30 text-green-300 rounded-full px-6 sm:px-8 py-3 sm:py-4 text-center animate-fadeIn text-sm sm:text-base font-space">
-          Thanks! We'll notify you when we launch.
-        </div>
-      )}
+    <div className="relative z-10 w-full flex justify-center">
+      <a 
+        href="/auth" 
+        className="px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 whitespace-nowrap text-sm sm:text-base font-space bg-white hover:bg-gray-100 text-black"
+      >
+        Get Started Free
+      </a>
     </div>
   );
 };
@@ -196,14 +150,14 @@ const Navbar: React.FC = () => {
             <a href="#features" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
               Features
             </a>
-            <a href="#pricing" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
-              Pricing
+            <a href="/terms" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+              Terms
             </a>
-            <a href="#demo" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
-              Demo
+            <a href="/menu/demo-restaurant/table1" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+              Demo Menu
             </a>
-            <a href="#contact" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
-              Contact
+            <a href="/auth" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+              Login
             </a>
             {mounted && (
               <button
@@ -218,9 +172,9 @@ const Navbar: React.FC = () => {
                 )}
               </button>
             )}
-            <button className="bg-white hover:bg-gray-100 text-black px-5 py-2 rounded-full transition-all duration-300 transform hover:scale-105 font-space">
+            <a href="/auth" className="bg-white hover:bg-gray-100 text-black px-5 py-2 rounded-full transition-all duration-300 transform hover:scale-105 font-space inline-block text-center">
               Get Started Free
-            </button>
+            </a>
           </div>
 
           <div className="md:hidden">
@@ -236,14 +190,14 @@ const Navbar: React.FC = () => {
               <a href="#features" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
                 Features
               </a>
-              <a href="#pricing" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
-                Pricing
+              <a href="/terms" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+                Terms
               </a>
-              <a href="#demo" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
-                Demo
+              <a href="/menu/demo-restaurant/table1" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+                Demo Menu
               </a>
-              <a href="#contact" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
-                Contact
+              <a href="/auth" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+                Login
               </a>
               {mounted && (
                 <button
@@ -264,9 +218,9 @@ const Navbar: React.FC = () => {
                   )}
                 </button>
               )}
-              <button className="bg-white hover:bg-gray-100 text-black px-5 py-2 rounded-full transition-all duration-300 w-full font-space">
+              <a href="/auth" className="bg-white hover:bg-gray-100 text-black px-5 py-2 rounded-full transition-all duration-300 w-full font-space block text-center">
                 Get Started Free
-              </button>
+              </a>
             </div>
           </div>
         )}
@@ -310,13 +264,13 @@ export const Component: React.FC = () => {
         </div>
         
         <div className="flex justify-center space-x-6">
-          <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
+          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
             <Instagram size={20} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
           </a>
-          <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
+          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
             <Linkedin size={20} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
           </a>
-          <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
             <Github size={20} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
           </a>
         </div>
