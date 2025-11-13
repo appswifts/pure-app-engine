@@ -440,12 +440,25 @@ export default function MenuGroupManagement() {
     priceRange[0] !== priceExtent.min || priceRange[1] !== priceExtent.max;
 
   const formatPrice = (price: number) => {
-    // Use the menu group's currency if available, fallback to RWF
-    const currency = menuGroup?.currency || "RWF";
+    // Use menu group's currency if available, or fallback to restaurant's primary_currency or default "RWF"
+    const currencyCode = menuGroup?.currency || restaurant?.primary_currency || "RWF";
     
-    return new Intl.NumberFormat("en-US", {
+    // Log currency for debugging
+    console.log('Using currency for price formatting:', currencyCode);
+    
+    // Get appropriate locale based on currency
+    let locale = "en";
+    if (currencyCode === "RWF") locale = "en-RW";
+    else if (currencyCode === "KES") locale = "en-KE";
+    else if (currencyCode === "UGX") locale = "en-UG";
+    else if (currencyCode === "TZS") locale = "en-TZ";
+    else if (currencyCode === "USD") locale = "en-US";
+    else if (currencyCode === "EUR") locale = "en-DE";
+    else if (currencyCode === "GBP") locale = "en-GB";
+    
+    return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: currency,
+      currency: currencyCode,
       minimumFractionDigits: 0,
     }).format(price);
   };

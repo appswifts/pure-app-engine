@@ -517,12 +517,25 @@ const PublicMenu = () => {
   };
 
   const formatPrice = (price: number) => {
-    // Use the menu group's currency if available, fallback to RWF
-    const currency = selectedMenuGroup?.currency || "RWF";
+    // Use menu group's currency if available, or fallback to restaurant's primary_currency or default "RWF"
+    const currencyCode = (selectedMenuGroup as any)?.currency || restaurant?.primary_currency || "RWF";
     
-    return new Intl.NumberFormat("en-US", {
+    // Log currency for debugging
+    console.log('Using currency:', currencyCode, 'for menu group:', selectedMenuGroup?.name);
+    
+    // Get appropriate locale based on currency
+    let locale = "en";
+    if (currencyCode === "RWF") locale = "en-RW";
+    else if (currencyCode === "KES") locale = "en-KE";
+    else if (currencyCode === "UGX") locale = "en-UG";
+    else if (currencyCode === "TZS") locale = "en-TZ";
+    else if (currencyCode === "USD") locale = "en-US";
+    else if (currencyCode === "EUR") locale = "en-DE";
+    else if (currencyCode === "GBP") locale = "en-GB";
+    
+    return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: currency,
+      currency: currencyCode,
       minimumFractionDigits: 0,
     }).format(price);
   };
