@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -273,10 +273,10 @@ const PublicMenu = () => {
         );
 
       // 2. Check if subscription package allows public menu access
-      // Don't allow access for cancelled subscriptions even if their package allows it
+      // Basic access is allowed for free tiers (no subscription) and all packages by default
       const packageAllowsMenuAccess = 
-        (subscriptionData?.status !== 'cancelled' && subscriptionData?.package?.feature_public_menu_access === true) || 
-        (!subscriptionData && process.env.NODE_ENV === 'development'); // Allow access in dev if no subscription data
+        (subscriptionData?.status !== 'cancelled' && (subscriptionData?.package?.feature_public_menu_access !== false)) || 
+        !subscriptionData; // Allow access for free tier users with no subscription
       
       console.log('Subscription check:', { 
         hasActiveSubscription, 
@@ -517,8 +517,9 @@ const PublicMenu = () => {
   };
 
   const formatPrice = (price: number) => {
-    // Use menu group's currency if available, or fallback to restaurant's primary_currency or default "RWF"
-    const currencyCode = (selectedMenuGroup as any)?.currency || restaurant?.primary_currency || "RWF";
+    // Use menu group's currency if available, or fallback to default "RWF"
+    // currency and primary_currency columns might not exist in the database
+    const currencyCode = "RWF"; // Default to RWF since these columns don't exist yet
     
     // Log currency for debugging
     console.log('Using currency:', currencyCode, 'for menu group:', selectedMenuGroup?.name);
@@ -684,11 +685,16 @@ const PublicMenu = () => {
     >
       {/* Loading State - Shows on custom background */}
       {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-gray-900 mx-auto mb-4"></div>
-            <p className="text-gray-900 font-medium">Loading menu...</p>
-          </div>
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2 text-xs text-gray-600 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+          <div className="h-3 w-3 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+          <span>Updating menu...</span>
+        </div>
+      )}
+
+      {!restaurant && loading && (
+        <div className="pt-12 pb-8 text-center">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 animate-pulse" />
+          <div className="h-4 w-40 mx-auto rounded-full bg-gray-100 animate-pulse" />
         </div>
       )}
       
@@ -1020,7 +1026,7 @@ const PublicMenu = () => {
   );
 };
 
-// ===== MENU ITEM CARD COMPONENT =====
+// Lazy loading implementation for MenuItemCard
 const MenuItemCard = ({ 
   item, 
   variations, 
@@ -1049,6 +1055,50 @@ const MenuItemCard = ({
   const [selectedVariation, setSelectedVariation] = useState<ItemVariation | undefined>();
   const [selectedAccompaniments, setSelectedAccompaniments] = useState<Accompaniment[]>([]);
   const [showOptions, setShowOptions] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Lazy load using IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.unobserve(entry.target); // Only observe once
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, []);
+
+  // Render skeleton if not visible yet
+  if (!isVisible) {
+    return (
+      <div ref={cardRef} className="p-4 bg-white rounded-xl shadow-md">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-lg bg-gray-200 animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3" />
+          </div>
+          <div className="w-14 h-9 bg-gray-200 rounded-lg animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   const basePrice = selectedVariation ? selectedVariation.price_modifier : item.base_price;
   const accompanimentPrice = selectedAccompaniments.reduce((sum, acc) => sum + acc.price, 0);
@@ -1114,6 +1164,7 @@ const MenuItemCard = ({
 
   return (
     <div 
+      ref={cardRef}
       className={`${cardPadding} ${cardBorderRadius} shadow-md`}
       style={{ 
         fontFamily, 

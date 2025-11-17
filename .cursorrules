@@ -95,6 +95,13 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Cursor learned
 
+- When setting up Supabase MCP server, ensure the server name in cline_mcp_settings.json matches exactly what's requested by the user. In this case, it was "github.com/supabase-community/supabase-mcp".
+- Always check the existing cline_mcp_settings.json file before editing to avoid overwriting existing servers.
+- The Supabase MCP server provides database tools like execute_sql, list_tables, and apply_migration that can be used to manage subscription tables.
+- Network connectivity issues might prevent MCP server usage in some environments (e.g., VPN/firewall), so alternative verification methods might be needed.
+- Always clean up test files after use to maintain a tidy codebase.
+
+
 - For search results, ensure proper handling of different character encodings (UTF-8) for international queries
 - When using seaborn styles in matplotlib, use 'seaborn-v0_8' instead of 'seaborn' as the style name due to recent seaborn version changes
 - Use 'gpt-4o' as the model name for OpenAI's GPT-4 with vision capabilities

@@ -187,10 +187,9 @@ class SupabaseCache {
     return this.getOrFetch(
       `menu_groups:${restaurantId}`,
       async () => {
-        // Explicitly selecting currency field to ensure it's included
         const { data, error } = await supabase
           .from('menu_groups')
-          .select('*, currency')
+          .select('*')
           .eq('restaurant_id', restaurantId)
           .eq('is_active', true)
           .order('display_order');
