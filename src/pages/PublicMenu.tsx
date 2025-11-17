@@ -174,15 +174,16 @@ interface CartItem {
   totalPrice: number;
 }
 
-// ===== MAIN COMPONENT =====
+  // ===== MAIN COMPONENT =====
 const PublicMenu = () => {
   const { restaurantSlug, tableSlug, tableId, groupSlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // State
+  // State with improved loading states
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true); // For initial page load
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuGroups, setMenuGroups] = useState<MenuGroup[]>([]);
   const [selectedMenuGroup, setSelectedMenuGroup] = useState<MenuGroup | null>(null);
@@ -198,6 +199,7 @@ const PublicMenu = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [accessInfo, setAccessInfo] = useState<any>(null);
   const [isGroupPreselected, setIsGroupPreselected] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false); // Tracks when all critical data is loaded
 
   // ===== LOAD DATA =====
   useEffect(() => {
@@ -214,6 +216,8 @@ const PublicMenu = () => {
   const loadMenuData = async () => {
     try {
       setLoading(true);
+      setInitialLoading(true);
+      setDataLoaded(false); // Reset data loaded flag
 
       // Load restaurant data
       const { data: restaurantDataRaw, error: restaurantError } = await supabase
@@ -406,10 +410,17 @@ const PublicMenu = () => {
         supabaseCache.getAccompaniments()
       ]);
 
-      setCategories(categoriesData || []);
-      setMenuItems(itemsData || []);
-      setVariations(variationsData || []);
-      setAccompaniments(accompanimentsData || []);
+        setCategories(categoriesData || []);
+        setMenuItems(itemsData || []);
+        setVariations(variationsData || []);
+        setAccompaniments(accompanimentsData || []);
+
+        // Add a small delay to ensure smooth transition
+        setTimeout(() => {
+          setDataLoaded(true);
+          setInitialLoading(false);
+          setLoading(false);
+        }, 300);
 
     } catch (error: any) {
       console.error("Error loading menu:", error);
@@ -418,7 +429,8 @@ const PublicMenu = () => {
         description: error.message,
         variant: "destructive",
       });
-    } finally {
+      setDataLoaded(true);
+      setInitialLoading(false);
       setLoading(false);
     }
   };
@@ -662,7 +674,7 @@ const PublicMenu = () => {
   // Background style is now memoized to prevent flickering
 
   // ===== ERROR STATES (Only show errors when not loading) =====
-  if (!loading && !restaurant) {
+  if (!restaurant && !loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="text-center">
@@ -673,7 +685,7 @@ const PublicMenu = () => {
     );
   }
 
-  if (!loading && accessInfo && !accessInfo.hasAccess) {
+  if (!accessInfo?.hasAccess && !loading) {
     return <RestrictedMenuView restaurant={restaurant} accessInfo={accessInfo} />;
   }
 
@@ -683,25 +695,31 @@ const PublicMenu = () => {
       className="min-h-screen relative" 
       style={{ ...getBackgroundStyle, fontFamily: `${fontFamily}, sans-serif` }}
     >
+      {/* Loading Overlay for initial page load */}
+      {initialLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm z-50">
+          <div className="text-center">
+            <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm animate-ping" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Loading Menu...</h2>
+            <p className="text-sm text-gray-600">Preparing your dining experience</p>
+          </div>
+        </div>
+      )}
+
       {/* Loading State - Shows on custom background */}
-      {loading && (
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-2 text-xs text-gray-600 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+      {loading && !initialLoading && (
+        <div className="fixed top-3 right-3 z-40 flex items-center gap-2 text-xs text-gray-600 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm animate-pulse">
           <div className="h-3 w-3 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
           <span>Updating menu...</span>
         </div>
       )}
 
-      {!restaurant && loading && (
-        <div className="pt-12 pb-8 text-center">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 animate-pulse" />
-          <div className="h-4 w-40 mx-auto rounded-full bg-gray-100 animate-pulse" />
-        </div>
-      )}
-      
       {restaurant && (
-      <div className="relative z-10">
-        {/* Restaurant Header */}
-        <div className="text-center pt-12 pb-8">
+      <div className="relative z-10 opacity-100 transition-opacity duration-300">
+        {/* Restaurant Header with smooth fade-in */}
+        <div className={`text-center pt-12 pb-8 ${dataLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500 delay-200`}>
           <div className="mb-6">
             <div 
               className="w-20 h-20 rounded-full overflow-hidden border-4 mb-4 mx-auto" 
@@ -844,32 +862,57 @@ const PublicMenu = () => {
           </div>
         </div>
 
-        {/* Menu Items */}
+        {/* Menu Items with staggered fade-in */}
         <div className="px-4 pb-24">
           <div className="max-w-md mx-auto space-y-4">
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">🍽️</div>
-                <h3 className="text-lg font-medium mb-2" style={{ color: textColor }}>
-                  No items available
-                </h3>
-              </div>
+            {dataLoaded ? (
+              filteredItems.length === 0 ? (
+                <div className={`text-center py-16 opacity-100 transition-opacity duration-500 delay-300`}>
+                  <div className="text-6xl mb-4">🍽️</div>
+                  <h3 className="text-xl font-medium mb-2" style={{ color: textColor }}>
+                    No items available
+                  </h3>
+                  <p className="text-sm text-gray-500">Check back later for updates</p>
+                </div>
+              ) : (
+                filteredItems.map((item, index) => (
+                  <div 
+                    key={item.id}
+                    className={`opacity-100 transition-all duration-500 delay-${index * 50} ease-out transform translate-y-0`}
+                  >
+                    <MenuItemCard
+                      item={item}
+                      variations={variations.filter(v => v.menu_item_id === item.id)}
+                      accompaniments={accompaniments.filter(a => a.menu_item_id === item.id)}
+                      onAddToCart={addToCart}
+                      onRemoveFromCart={removeFromCart}
+                      cart={cart}
+                      formatPrice={formatPrice}
+                      cardClass={getCardClass()}
+                      brandColor={brandColor}
+                      fontFamily={fontFamily}
+                      menuGroup={selectedMenuGroup}
+                    />
+                  </div>
+                ))
+              )
             ) : (
-              filteredItems.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  variations={variations.filter(v => v.menu_item_id === item.id)}
-                  accompaniments={accompaniments.filter(a => a.menu_item_id === item.id)}
-                  onAddToCart={addToCart}
-                  onRemoveFromCart={removeFromCart}
-                  cart={cart}
-                  formatPrice={formatPrice}
-                  cardClass={getCardClass()}
-                  brandColor={brandColor}
-                  fontFamily={fontFamily}
-                  menuGroup={selectedMenuGroup}
-                />
+              // Show skeleton loaders while data is being processed
+              Array.from({ length: 5 }).map((_, index) => (
+                <div 
+                  key={index}
+                  className="p-4 bg-white rounded-xl shadow-md animate-pulse"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-lg bg-gray-200" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3" />
+                    </div>
+                    <div className="w-14 h-9 bg-gray-200 rounded-lg" />
+                  </div>
+                </div>
               ))
             )}
           </div>
