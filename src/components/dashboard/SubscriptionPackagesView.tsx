@@ -5,7 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Package, Crown, Star, Zap, CheckCircle, XCircle } from 'lucide-react';
-import SubscriptionDialog from './SubscriptionDialog';
+import { usePayment } from '@/hooks/usePayment';
+import { ManualPaymentInstructions } from '@/components/payment/ManualPaymentInstructions';
+
+interface PaymentIntent {
+  paymentId: string;
+  status: string;
+  amount: number;
+  currency: string;
+  metadata: {
+    paymentInstructions: any;
+  };
+}
 
 interface SubscriptionPackage {
   id: string;
@@ -40,9 +51,9 @@ const SubscriptionPackagesView: React.FC = () => {
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<SubscriptionPackage | null>(null);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
+  const { createPayment, loading: paymentLoading } = usePayment();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -143,10 +154,45 @@ const SubscriptionPackagesView: React.FC = () => {
     return features;
   };
 
-  const handleSubscribeClick = (pkg: SubscriptionPackage, cycle: 'monthly' | 'yearly' = 'monthly') => {
+  const handleSubscribeClick = async (pkg: SubscriptionPackage, cycle: 'monthly' | 'yearly' = 'monthly') => {
     setSelectedPackage(pkg);
-    setBillingCycle(cycle);
-    setDialogOpen(true);
+    const amount = cycle === 'monthly' ? pkg.price_monthly : pkg.price_yearly;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      toast({ title: "Authentication Error", description: "Please sign in again.", variant: "destructive" });
+      return;
+    }
+
+    const intent = await createPayment('manual', amount, pkg.currency, {
+      paymentMethod: 'bank_transfer',
+      customerEmail: user.email || '',
+      customerName: user.email || '',
+      restaurantId: '', // You might need to fetch this
+    });
+
+    if (intent) {
+      setPaymentIntent(intent);
+    }
+  };
+
+  const handleUploadProof = async (paymentId: string, file: File) => {
+    const { data, error } = await supabase.storage
+      .from('payment-proofs')
+      .upload(`${paymentId}/${file.name}`, file);
+
+    if (error) {
+      toast({ title: 'Upload Error', description: error.message, variant: 'destructive' });
+      throw error;
+    }
+
+    await supabase
+      .from('manual_payments')
+      .update({ proof_of_payment_url: data.path, status: 'awaiting_verification' })
+      .eq('payment_id', paymentId);
+
+    toast({ title: 'Upload Successful', description: 'Your payment is being verified.' });
+    setPaymentIntent(null);
   };
 
   if (loading) {
@@ -174,6 +220,15 @@ const SubscriptionPackagesView: React.FC = () => {
       </Card>
     );
   }
+
+if (paymentIntent) {
+  return (
+    <ManualPaymentInstructions
+      paymentIntent={paymentIntent}
+      onUploadProof={handleUploadProof}
+    />
+  );
+}
 
   if (packages.length === 0) {
     return (
@@ -371,12 +426,6 @@ const SubscriptionPackagesView: React.FC = () => {
       </CardContent>
 
       {/* Subscription Dialog */}
-      <SubscriptionDialog
-        isOpen={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        package={selectedPackage}
-        billingCycle={billingCycle}
-      />
     </Card>
   );
 };
