@@ -11,7 +11,7 @@ import { DiagnosticPanel } from "@/components/DiagnosticPanel";
 import { RestaurantLoader } from "@/utils/restaurantLoader";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import ErrorFallback from "@/components/ErrorFallback";
-import { RestaurantLoadingSkeleton } from "@/components/RestaurantLoadingSkeleton";
+import { RestaurantLoadingSkeleton, DashboardOverviewSkeleton } from "@/components/RestaurantLoadingSkeleton";
 import RestaurantErrorBoundary from "@/components/RestaurantErrorBoundary";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { LoadingTracker, logError } from '@/utils/debugUtils';
@@ -98,10 +98,6 @@ const Dashboard = () => {
     getUser();
   }, [navigate]);
 
-  if (loading) {
-    return <RestaurantLoadingSkeleton />;
-  }
-
   if (errorState.hasError && !restaurant) {
     return (
       <ErrorFallback
@@ -117,126 +113,122 @@ const Dashboard = () => {
     <RestaurantErrorBoundary>
       <ModernDashboardLayout>
         <div className="space-y-6">
-          {/* Profile Completion Banner removed */}
-
-          {activeTab === "overview" && (
+          {loading ? (
+            <DashboardOverviewSkeleton />
+          ) : (
             <>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-                <p className="text-muted-foreground">
-                  Welcome back! Here's what's happening with your restaurant.
-                </p>
-              </div>
-
-              {/* Diagnostic Panel - Temporary for debugging */}
-              {!restaurant && <DiagnosticPanel />}
-
-              {/* Welcome Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    Welcome to Your QR Menu Dashboard
-                  </CardTitle>
-                  <CardDescription>
-                    Manage your restaurant's digital menu and generate QR codes for seamless customer experience
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>Get started with these common tasks</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-4">
-                  <Button onClick={() => navigate("/dashboard/menu")}>
-                    Add Menu Item
-                  </Button>
-                  <Button onClick={() => navigate("/dashboard/qr")} variant="outline">
-                    Tables & QR Codes
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Subscription Packages */}
-              <SubscriptionPackagesView />
-
-              {/* Getting Started Guide */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Getting Started</CardTitle>
-                  <CardDescription>Follow these steps to set up your QR menu</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1</div>
-                    <div>
-                      <h4 className="font-semibold">Create Menu Categories</h4>
-                      <p className="text-sm text-muted-foreground">Organize your menu with categories like "Appetizers", "Main Courses", etc.</p>
-                    </div>
+              {activeTab === "overview" && (
+                <>
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+                    <p className="text-muted-foreground">
+                      Welcome back! Here's what's happening with your restaurant.
+                    </p>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2</div>
-                    <div>
-                      <h4 className="font-semibold">Add Menu Items</h4>
-                      <p className="text-sm text-muted-foreground">Add dishes with descriptions, prices, and photos to each category.</p>
-                    </div>
+
+                  {!restaurant && <DiagnosticPanel />}
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Welcome to Your QR Menu Dashboard
+                      </CardTitle>
+                      <CardDescription>
+                        Manage your restaurant's digital menu and generate QR codes for seamless customer experience
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Quick Actions</CardTitle>
+                      <CardDescription>Get started with these common tasks</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-4">
+                      <Button onClick={() => navigate("/dashboard/menu")}>
+                        Add Menu Item
+                      </Button>
+                      <Button onClick={() => navigate("/dashboard/qr")} variant="outline">
+                        Tables & QR Codes
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <SubscriptionPackagesView />
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Getting Started</CardTitle>
+                      <CardDescription>Follow these steps to set up your QR menu</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1</div>
+                        <div>
+                          <h4 className="font-semibold">Create Menu Categories</h4>
+                          <p className="text-sm text-muted-foreground">Organize your menu with categories like "Appetizers", "Main Courses", etc.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">2</div>
+                        <div>
+                          <h4 className="font-semibold">Add Menu Items</h4>
+                          <p className="text-sm text-muted-foreground">Add dishes with descriptions, prices, and photos to each category.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
+                        <div>
+                          <h4 className="font-semibold">Set Up Tables & QR Codes</h4>
+                          <p className="text-sm text-muted-foreground">Create tables and generate QR codes for each table in your restaurant.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">4</div>
+                        <div>
+                          <h4 className="font-semibold">Print & Display</h4>
+                          <p className="text-sm text-muted-foreground">Print QR codes and place them on tables for customers to scan.</p>
+                        </div>
+                      </div>
+                      <Button onClick={() => navigate("/dashboard/menu")} className="mt-4">
+                        Start With Menu Items
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+
+              {activeTab === "menu" && (
+                <>
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Menu Items</h1>
+                    <p className="text-muted-foreground">
+                      Manage your restaurant's menu items, categories, and options.
+                    </p>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">3</div>
-                    <div>
-                      <h4 className="font-semibold">Set Up Tables & QR Codes</h4>
-                      <p className="text-sm text-muted-foreground">Create tables and generate QR codes for each table in your restaurant.</p>
-                    </div>
+                  {user && <EnhancedItemManager user={user} />}
+                </>
+              )}
+
+              {activeTab === "ai-import" && (
+                <>
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">AI Menu Import</h1>
+                    <p className="text-muted-foreground">
+                      Import your menu from images using AI technology.
+                    </p>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">4</div>
-                    <div>
-                      <h4 className="font-semibold">Print & Display</h4>
-                      <p className="text-sm text-muted-foreground">Print QR codes and place them on tables for customers to scan.</p>
-                    </div>
-                  </div>
-                  <Button onClick={() => navigate("/dashboard/menu")} className="mt-4">
-                    Start With Menu Items
-                  </Button>
-                </CardContent>
-              </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="text-muted-foreground">
+                        AI menu import feature coming soon. Upload menu images and let AI extract items automatically.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </>
           )}
-
-          {activeTab === "menu" && (
-            <>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Menu Items</h1>
-                <p className="text-muted-foreground">
-                  Manage your restaurant's menu items, categories, and options.
-                </p>
-              </div>
-              {user && <EnhancedItemManager user={user} />}
-            </>
-          )}
-
-          {activeTab === "ai-import" && (
-            <>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">AI Menu Import</h1>
-                <p className="text-muted-foreground">
-                  Import your menu from images using AI technology.
-                </p>
-              </div>
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground">
-                    AI menu import feature coming soon. Upload menu images and let AI extract items automatically.
-                  </p>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Embed tab removed */}
-          {/* Settings tab removed - RestaurantSettings page deleted */}
         </div>
       </ModernDashboardLayout>
     </RestaurantErrorBoundary>

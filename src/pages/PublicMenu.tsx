@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import InfiniteScroll from "react-infinite-scroll-component";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -182,55 +184,93 @@ const PublicMenu = () => {
   const { toast } = useToast();
 
   // State with improved loading states
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true); // For initial page load
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [menuGroups, setMenuGroups] = useState<MenuGroup[]>([]);
-  const [selectedMenuGroup, setSelectedMenuGroup] = useState<MenuGroup | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [variations, setVariations] = useState<ItemVariation[]>([]);
-  const [accompaniments, setAccompaniments] = useState<Accompaniment[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [accessInfo, setAccessInfo] = useState<any>(null);
-  const [isGroupPreselected, setIsGroupPreselected] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false); // Tracks when all critical data is loaded
 
-  // ===== LOAD DATA =====
-  useEffect(() => {
-    if (restaurantSlug) {
-      loadMenuData();
-    }
-  }, [restaurantSlug]);
-
-  // Reset category selection when menu group changes
-  useEffect(() => {
-    setSelectedCategory(null);
-  }, [selectedMenuGroup]);
-
-  const loadMenuData = async () => {
-    try {
-      setLoading(true);
-      setInitialLoading(true);
-      setDataLoaded(false); // Reset data loaded flag
-
-      // Load restaurant data
-      const { data: restaurantDataRaw, error: restaurantError } = await supabase
+  const { data: restaurant, isLoading: isRestaurantLoading } = useQuery({
+    queryKey: ['restaurant', restaurantSlug],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from('restaurants')
         .select('*')
         .eq('slug', restaurantSlug!)
         .single();
+      if (error) throw error;
+      return data as Restaurant;
+    },
+    enabled: !!restaurantSlug,
+  });
 
-      if (restaurantError || !restaurantDataRaw) {
-        console.error('Restaurant not found:', restaurantError);
-        setLoading(false);
-        return;
+  const { data: menuGroups, isLoading: areMenuGroupsLoading } = useQuery({
+    queryKey: ['menuGroups', restaurant?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('menu_groups')
+        .select('*')
+        .eq('restaurant_id', restaurant!.id)
+        .order('display_order');
+      if (error) throw error;
+      return data as MenuGroup[];
+    },
+    enabled: !!restaurant,
+  });
+
+  const selectedMenuGroup = useMemo(() => {
+    if (!menuGroups || menuGroups.length === 0) return null;
+    const groupParam = groupSlug || searchParams.get("group");
+    if (groupParam) {
+      return menuGroups.find(g => g.name.toLowerCase() === groupParam.toLowerCase() || g.id === groupParam) || menuGroups[0];
+    }
+    return menuGroups[0];
+  }, [menuGroups, groupSlug, searchParams]);
+
+    const { data: categories, isLoading: areCategoriesLoading } = useQuery({
+    queryKey: ['categories', selectedMenuGroup?.id],
+    queryFn: async () => {
+        const { data, error } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('menu_group_id', selectedMenuGroup!.id)
+            .order('display_order');
+        if (error) throw error;
+        return data as Category[];
+    },
+    enabled: !!selectedMenuGroup,
+  });
+
+  const {
+    data: menuItems,
+    fetchNextPage,
+    hasNextPage,
+    isLoading: areMenuItemsLoading,
+  } = useInfiniteQuery({
+    queryKey: ['menuItems', selectedMenuGroup?.id, selectedCategory],
+    queryFn: async ({ pageParam = 0 }) => {
+      let query = supabase
+        .from('menu_items')
+        .select('*');
+
+      if (selectedCategory) {
+        query = query.eq('category_id', selectedCategory);
+      } else {
+        query = query.in('category_id', categories!.map(c => c.id));
       }
+
+      const { data, error } = await query.range(pageParam, pageParam + 9);
+      if (error) throw error;
+      return data as MenuItem[];
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 10 ? allPages.length * 10 : undefined;
+    },
+    enabled: !!categories,
+  });
+
+  const allItems = useMemo(() => menuItems?.pages.flatMap(page => page) || [], [menuItems]);
 
       const restaurantData = restaurantDataRaw as any;
 
@@ -529,27 +569,10 @@ const PublicMenu = () => {
   };
 
   const formatPrice = (price: number) => {
-    // Use menu group's currency if available, or fallback to default "RWF"
-    // currency and primary_currency columns might not exist in the database
-    const currencyCode = "RWF"; // Default to RWF since these columns don't exist yet
-    
-    // Log currency for debugging
-    console.log('Using currency:', currencyCode, 'for menu group:', selectedMenuGroup?.name);
-    
-    // Get appropriate locale based on currency
-    let locale = "en";
-    if (currencyCode === "RWF") locale = "en-RW";
-    else if (currencyCode === "KES") locale = "en-KE";
-    else if (currencyCode === "UGX") locale = "en-UG";
-    else if (currencyCode === "TZS") locale = "en-TZ";
-    else if (currencyCode === "USD") locale = "en-US";
-    else if (currencyCode === "EUR") locale = "en-DE";
-    else if (currencyCode === "GBP") locale = "en-GB";
-    
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 0,
+    const currencyCode = selectedMenuGroup?.currency || "RWF";
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
     }).format(price);
   };
 
@@ -670,18 +693,21 @@ const PublicMenu = () => {
     return true;
   });
 
-  // ===== MAIN RENDER (Keep background consistent) =====
-  // Background style is now memoized to prevent flickering
-
-  // ===== ERROR STATES (Only show errors when not loading) =====
-  if (!restaurant && !loading) {
+  if (isRestaurantLoading || areMenuGroupsLoading || areCategoriesLoading || areMenuItemsLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🍽️</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Restaurant Not Found</h2>
+        <div className="min-h-screen bg-gray-100 p-4">
+            <div className="max-w-md mx-auto">
+                <div className="animate-pulse">
+                    <div className="h-24 bg-gray-200 rounded-lg mb-4"></div>
+                    <div className="h-8 bg-gray-200 rounded-lg mb-8"></div>
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-20 bg-gray-200 rounded-lg"></div>
+                        ))}
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     );
   }
 
@@ -864,39 +890,36 @@ const PublicMenu = () => {
 
         {/* Menu Items with staggered fade-in */}
         <div className="px-4 pb-24">
-          <div className="max-w-md mx-auto space-y-4">
-            {dataLoaded ? (
-              filteredItems.length === 0 ? (
-                <div className={`text-center py-16 opacity-100 transition-opacity duration-500 delay-300`}>
-                  <div className="text-6xl mb-4">🍽️</div>
-                  <h3 className="text-xl font-medium mb-2" style={{ color: textColor }}>
-                    No items available
-                  </h3>
-                  <p className="text-sm text-gray-500">Check back later for updates</p>
+          <InfiniteScroll
+            dataLength={allItems.length}
+            next={fetchNextPage}
+            hasMore={hasNextPage || false}
+            loader={<h4>Loading...</h4>}
+            endMessage={<p style={{ textAlign: 'center' }}><b>Yay! You have seen it all</b></p>}
+          >
+            <div className="max-w-md mx-auto space-y-4">
+              {allItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  className={`opacity-100 transition-all duration-500 delay-${index * 50} ease-out transform translate-y-0`}
+                >
+                  <MenuItemCard
+                    item={item}
+                    variations={[]}
+                    accompaniments={[]}
+                    onAddToCart={addToCart}
+                    onRemoveFromCart={removeFromCart}
+                    cart={cart}
+                    formatPrice={formatPrice}
+                    cardClass={getCardClass()}
+                    brandColor={brandColor}
+                    fontFamily={fontFamily}
+                    menuGroup={selectedMenuGroup}
+                  />
                 </div>
-              ) : (
-                filteredItems.map((item, index) => (
-                  <div 
-                    key={item.id}
-                    className={`opacity-100 transition-all duration-500 delay-${index * 50} ease-out transform translate-y-0`}
-                  >
-                    <MenuItemCard
-                      item={item}
-                      variations={variations.filter(v => v.menu_item_id === item.id)}
-                      accompaniments={accompaniments.filter(a => a.menu_item_id === item.id)}
-                      onAddToCart={addToCart}
-                      onRemoveFromCart={removeFromCart}
-                      cart={cart}
-                      formatPrice={formatPrice}
-                      cardClass={getCardClass()}
-                      brandColor={brandColor}
-                      fontFamily={fontFamily}
-                      menuGroup={selectedMenuGroup}
-                    />
-                  </div>
-                ))
-              )
-            ) : (
+              ))}
+            </div>
+          </InfiniteScroll>
               // Show skeleton loaders while data is being processed
               Array.from({ length: 5 }).map((_, index) => (
                 <div 
@@ -1208,7 +1231,7 @@ const MenuItemCard = ({
   return (
     <div 
       ref={cardRef}
-      className={`${cardPadding} ${cardBorderRadius} shadow-md`}
+      className={`menu-item-card ${cardPadding} ${cardBorderRadius} shadow-md`}
       style={{ 
         fontFamily, 
         backgroundColor: cardBg,

@@ -860,6 +860,22 @@ export default function MenuGroupSettings() {
                       )}
                     </p>
                   </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="group-currency">Currency</Label>
+                    <Select
+                      value={groupForm.currency}
+                      onValueChange={(value) => setGroupForm({ ...groupForm, currency: value })}
+                    >
+                      <SelectTrigger id="group-currency">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="RWF">RWF</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label htmlFor="group-active">Active Status</Label>
