@@ -136,8 +136,18 @@ class SupabaseCache {
   /**
    * Get menu items for a restaurant (5 min cache)
    */
-  async getMenuItems(restaurantId: string, options?: { includeUnavailable?: boolean }) {
-    const key = `menu_items:${restaurantId}:${options?.includeUnavailable ? 'all' : 'available'}`;
+  async getMenuItems(
+    restaurantId: string,
+    options?: {
+      includeUnavailable?: boolean;
+      limit?: number;
+      offset?: number;
+      categoryId?: string | null;
+    }
+  ) {
+    const key = `menu_items:${restaurantId}:${
+      options?.includeUnavailable ? 'all' : 'available'
+    }:${options?.limit || 'none'}:${options?.offset || 0}:${options?.categoryId || 'all'}`;
     
     return this.getOrFetch(
       key,
@@ -150,6 +160,14 @@ class SupabaseCache {
         
         if (!options?.includeUnavailable) {
           query = query.eq('is_available', true);
+        }
+
+        if (options?.categoryId) {
+          query = query.eq('category_id', options.categoryId);
+        }
+
+        if (options?.limit) {
+          query = query.range(options.offset || 0, (options.offset || 0) + options.limit - 1);
         }
         
         const { data, error } = await query;
