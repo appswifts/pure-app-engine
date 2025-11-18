@@ -190,6 +190,9 @@ const PublicMenu = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [variations, setVariations] = useState<ItemVariation[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [accompaniments, setAccompaniments] = useState<Accompaniment[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -402,18 +405,19 @@ const PublicMenu = () => {
         setSelectedMenuGroup(selectedGroup);
       }
 
-      // Load all data in parallel using cache (5-10 min caching)
-      const [categoriesData, itemsData, variationsData, accompanimentsData] = await Promise.all([
+      // Load initial data
+      const [categoriesData, variationsData, accompanimentsData] = await Promise.all([
         supabaseCache.getCategories(restaurantData.id),
-        supabaseCache.getMenuItems(restaurantData.id),
         supabaseCache.getVariations(),
         supabaseCache.getAccompaniments()
       ]);
 
-        setCategories(categoriesData || []);
-        setMenuItems(itemsData || []);
-        setVariations(variationsData || []);
-        setAccompaniments(accompanimentsData || []);
+      setCategories(categoriesData || []);
+      setVariations(variationsData || []);
+      setAccompaniments(accompanimentsData || []);
+
+      // Load first page of menu items
+      await loadMoreItems(true);
 
         // Add a small delay to ensure smooth transition
         setTimeout(() => {
@@ -432,6 +436,40 @@ const PublicMenu = () => {
       setDataLoaded(true);
       setInitialLoading(false);
       setLoading(false);
+    }
+  };
+
+  const loadMoreItems = async (isInitialLoad = false) => {
+    if (isFetchingMore || !hasMore || !restaurant) return;
+
+    setIsFetchingMore(true);
+    if (!isInitialLoad) setLoading(true);
+
+    try {
+      const itemsPerPage = 10;
+      const currentPage = isInitialLoad ? 0 : page;
+      const itemsData = await supabaseCache.getMenuItems(restaurant!.id, {
+        limit: itemsPerPage,
+        offset: currentPage * itemsPerPage,
+        categoryId: selectedCategory,
+      });
+
+      if (itemsData && itemsData.length > 0) {
+        setMenuItems(prev => isInitialLoad ? itemsData : [...prev, ...itemsData]);
+        setPage(currentPage + 1);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error: any) {
+      console.error("Error loading more items:", error);
+      toast({
+        title: "Error loading more items",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingMore(false);
+      if (!isInitialLoad) setLoading(false);
     }
   };
 
@@ -642,25 +680,10 @@ const PublicMenu = () => {
     if (selectedMenuGroup && menuGroups.length > 0) {
       if (cat.menu_group_id && cat.menu_group_id !== selectedMenuGroup.id) return false;
     }
-    
-    // Only show categories that have at least one menu item
-    const hasItems = menuItems.some(item => item.category_id === cat.id);
-    return hasItems;
+    return true;
   });
 
   const filteredItems = menuItems.filter(item => {
-    const itemCategory = categories.find(c => c.id === item.category_id);
-    
-    // Filter by group
-    if (selectedMenuGroup && menuGroups.length > 0 && itemCategory) {
-      if (itemCategory.menu_group_id && itemCategory.menu_group_id !== selectedMenuGroup.id) {
-        return false;
-      }
-    }
-
-    // Filter by category
-    if (selectedCategory && item.category_id !== selectedCategory) return false;
-
     // Filter by search
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         (!item.description || !item.description.toLowerCase().includes(searchQuery.toLowerCase()))) {
@@ -669,6 +692,35 @@ const PublicMenu = () => {
 
     return true;
   });
+
+  const observer = useRef<IntersectionObserver>();
+  const lastItemRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMenuItems([]);
+    setPage(0);
+    setHasMore(true);
+    loadMoreItems(true);
+  }, [selectedCategory, selectedMenuGroup]);
+
+  useEffect(() => {
+    if (isFetchingMore) return;
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMoreItems();
+      }
+    });
+
+    if (lastItemRef.current) {
+      observer.current.observe(lastItemRef.current);
+    }
+
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [isFetchingMore, hasMore]);
 
   // ===== MAIN RENDER (Keep background consistent) =====
   // Background style is now memoized to prevent flickering
@@ -876,9 +928,11 @@ const PublicMenu = () => {
                 </div>
               ) : (
                 filteredItems.map((item, index) => (
-                  <div 
+                  <div
                     key={item.id}
+                    ref={index === filteredItems.length - 1 ? lastItemRef : null}
                     className={`opacity-100 transition-all duration-500 delay-${index * 50} ease-out transform translate-y-0`}
+                    data-testid="menu-item"
                   >
                     <MenuItemCard
                       item={item}
@@ -914,6 +968,16 @@ const PublicMenu = () => {
                   </div>
                 </div>
               ))
+            )}
+            {isFetchingMore && (
+              <div className="flex justify-center items-center p-4">
+                <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+              </div>
+            )}
+            {!hasMore && filteredItems.length > 0 && (
+              <div className="text-center text-gray-500 py-4">
+                <p>You've reached the end of the menu.</p>
+              </div>
             )}
           </div>
         </div>
