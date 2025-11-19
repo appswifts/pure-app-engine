@@ -174,7 +174,7 @@ interface CartItem {
   totalPrice: number;
 }
 
-  // ===== MAIN COMPONENT =====
+// ===== MAIN COMPONENT =====
 const PublicMenu = () => {
   const { restaurantSlug, tableSlug, tableId, groupSlug } = useParams();
   const [searchParams] = useSearchParams();
@@ -261,7 +261,7 @@ const PublicMenu = () => {
       // Enhanced subscription check logic
       // 1. First check if subscription exists and is active
       // Cancelled subscriptions should NEVER be considered active
-      const hasActiveSubscription = subscriptionData && 
+      const hasActiveSubscription = subscriptionData &&
         subscriptionData.status !== 'cancelled' && (
           subscriptionData.status === 'active' ||
           (
@@ -277,13 +277,14 @@ const PublicMenu = () => {
         );
 
       // 2. Check if subscription package allows public menu access
-      // Basic access is allowed for free tiers (no subscription) and all packages by default
-      const packageAllowsMenuAccess = 
-        (subscriptionData?.status !== 'cancelled' && (subscriptionData?.package?.feature_public_menu_access !== false)) || 
-        !subscriptionData; // Allow access for free tier users with no subscription
-      
-      console.log('Subscription check:', { 
-        hasActiveSubscription, 
+      // IMPORTANT: Free tier (no subscription) should NOT have public menu access
+      // Only users with active subscriptions that include this feature can access public menus
+      const packageAllowsMenuAccess =
+        subscriptionData?.status !== 'cancelled' &&
+        subscriptionData?.package?.feature_public_menu_access === true;
+
+      console.log('Subscription check:', {
+        hasActiveSubscription,
         packageAllowsMenuAccess,
         subscriptionData: subscriptionData ? {
           status: subscriptionData.status,
@@ -293,18 +294,18 @@ const PublicMenu = () => {
 
       // 3. Override access for specific restaurants if needed (for compatibility)
       // But never allow access if subscription is explicitly cancelled
-      const forceAccess = subscriptionData?.status !== 'cancelled' && 
-                        (restaurantData?.is_menu_active === true || 
-                         process.env.NODE_ENV === 'development');
-      
+      const forceAccess = subscriptionData?.status !== 'cancelled' &&
+        (restaurantData?.is_menu_active === true ||
+          process.env.NODE_ENV === 'development');
+
       // When user has an active subscription, all their restaurant menus should be live
       // regardless of their explicit is_menu_active setting
       // But NEVER allow access if subscription is cancelled
       const isMenuAccessible = hasActiveSubscription || forceAccess;
-      
+
       // Update the restaurant's is_menu_active flag in memory to reflect subscription status
       if (restaurantData) {
-        restaurantData.is_menu_active = isMenuAccessible;  
+        restaurantData.is_menu_active = isMenuAccessible;
       }
 
       if (!isMenuAccessible) {
@@ -314,7 +315,7 @@ const PublicMenu = () => {
         let status = '';
         let showPaymentButton = true;
         let paymentAction = 'subscribe';
-        
+
         if (!subscriptionData) {
           message = 'The restaurant owner needs to activate their subscription.';
           reason = 'This restaurant requires a valid subscription';
@@ -344,9 +345,9 @@ const PublicMenu = () => {
           reason = 'Subscription status needs to be reviewed by admin';
           status = 'canceled';
         }
-        
-        setAccessInfo({ 
-          hasAccess: false, 
+
+        setAccessInfo({
+          hasAccess: false,
           restaurant: restaurantData as Restaurant,
           message,
           reason,
@@ -373,10 +374,10 @@ const PublicMenu = () => {
         const groupParam = groupSlug || searchParams.get("group");
 
         if (groupParam) {
-          selectedGroup = groupsData.find(g => 
+          selectedGroup = groupsData.find(g =>
             g.name.toLowerCase() === groupParam.toLowerCase() || g.id === groupParam
           ) || groupsData[0] || null;
-          
+
           // Mark that group was pre-selected from URL
           console.log('Group pre-selected from URL param:', groupParam);
           setIsGroupPreselected(true);
@@ -386,7 +387,7 @@ const PublicMenu = () => {
           // If tableSlug exists, redirect to group selection
           if (tableSlug || tableId) {
             // Check if we're already on the select-group page
-            if(window.location.pathname.includes('/select-group')) {
+            if (window.location.pathname.includes('/select-group')) {
               // We're on select-group page, so set isGroupPreselected for when user selects a group
               console.log('On select-group page, pre-selecting group:', selectedGroup?.name || 'none yet');
               setIsGroupPreselected(true);
@@ -410,17 +411,17 @@ const PublicMenu = () => {
         supabaseCache.getAccompaniments()
       ]);
 
-        setCategories(categoriesData || []);
-        setMenuItems(itemsData || []);
-        setVariations(variationsData || []);
-        setAccompaniments(accompanimentsData || []);
+      setCategories(categoriesData || []);
+      setMenuItems(itemsData || []);
+      setVariations(variationsData || []);
+      setAccompaniments(accompanimentsData || []);
 
-        // Add a small delay to ensure smooth transition
-        setTimeout(() => {
-          setDataLoaded(true);
-          setInitialLoading(false);
-          setLoading(false);
-        }, 300);
+      // Add a small delay to ensure smooth transition
+      setTimeout(() => {
+        setDataLoaded(true);
+        setInitialLoading(false);
+        setLoading(false);
+      }, 300);
 
     } catch (error: any) {
       console.error("Error loading menu:", error);
@@ -470,18 +471,18 @@ const PublicMenu = () => {
     if (bgStyle === "solid" && bgColor) {
       return { backgroundColor: bgColor, backgroundAttachment: 'fixed' };
     }
-    
+
     if (bgStyle === "image" && backgroundImage) {
-      return { 
-        backgroundImage: `url(${backgroundImage})`, 
-        backgroundSize: "cover", 
+      return {
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: 'fixed'
       };
     }
-    
+
     if (bgStyle === "gradient" && (primary || secondary)) {
-      return { 
+      return {
         backgroundImage: `linear-gradient(135deg, ${primary || '#ffffff'}, ${secondary || primary || '#ffffff'})`,
         backgroundAttachment: 'fixed'
       };
@@ -532,10 +533,10 @@ const PublicMenu = () => {
     // Use menu group's currency if available, or fallback to default "RWF"
     // currency and primary_currency columns might not exist in the database
     const currencyCode = "RWF"; // Default to RWF since these columns don't exist yet
-    
+
     // Log currency for debugging
     console.log('Using currency:', currencyCode, 'for menu group:', selectedMenuGroup?.name);
-    
+
     // Get appropriate locale based on currency
     let locale = "en";
     if (currencyCode === "RWF") locale = "en-RW";
@@ -545,7 +546,7 @@ const PublicMenu = () => {
     else if (currencyCode === "USD") locale = "en-US";
     else if (currencyCode === "EUR") locale = "en-DE";
     else if (currencyCode === "GBP") locale = "en-GB";
-    
+
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currencyCode,
@@ -574,7 +575,7 @@ const PublicMenu = () => {
 
     // Group items by name to consolidate quantities
     const consolidatedItems: Record<string, ConsolidatedItem> = {};
-    
+
     cart.forEach((item) => {
       const itemKey = item.name + (item.variation ? `-${item.variation.name}` : '');
       if (!consolidatedItems[itemKey]) {
@@ -596,33 +597,33 @@ const PublicMenu = () => {
 
     // Start building the message
     let message = `*New Order from ${customerName}*\n`;
-    
+
     // Add table info if available
     if (tableSlug || tableId) {
       message += `*Table:* ${tableSlug || tableId}\n`;
     }
-    
+
     // Add group name if available
     if (selectedMenuGroup) {
       message += `*Menu:* ${selectedMenuGroup.name}\n`;
     }
-    
+
     message += `\n`;
-    
+
     // Add items with quantities
     Object.values(consolidatedItems).forEach((item) => {
       message += `• ${item.name} x${item.quantity}`;
       if (item.variation) message += ` (${item.variation.name})`;
       message += ` — ${formatPrice(item.price)}\n`;
-      
+
       // Add accompaniments indented
       if (item.accompaniments.length > 0) {
         message += `   Add-ons: ${item.accompaniments.map(a => a.name).join(", ")}\n`;
       }
     });
-    
+
     message += `\n*Total: ${formatPrice(totalPrice)}*`;
-    
+
     // Add payment instructions if available
     const paymentInstructions = (selectedMenuGroup as any)?.payment_instructions;
     if (paymentInstructions) {
@@ -642,7 +643,7 @@ const PublicMenu = () => {
     if (selectedMenuGroup && menuGroups.length > 0) {
       if (cat.menu_group_id && cat.menu_group_id !== selectedMenuGroup.id) return false;
     }
-    
+
     // Only show categories that have at least one menu item
     const hasItems = menuItems.some(item => item.category_id === cat.id);
     return hasItems;
@@ -650,7 +651,7 @@ const PublicMenu = () => {
 
   const filteredItems = menuItems.filter(item => {
     const itemCategory = categories.find(c => c.id === item.category_id);
-    
+
     // Filter by group
     if (selectedMenuGroup && menuGroups.length > 0 && itemCategory) {
       if (itemCategory.menu_group_id && itemCategory.menu_group_id !== selectedMenuGroup.id) {
@@ -663,7 +664,7 @@ const PublicMenu = () => {
 
     // Filter by search
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        (!item.description || !item.description.toLowerCase().includes(searchQuery.toLowerCase()))) {
+      (!item.description || !item.description.toLowerCase().includes(searchQuery.toLowerCase()))) {
       return false;
     }
 
@@ -691,8 +692,8 @@ const PublicMenu = () => {
 
   // ===== MAIN RENDER =====
   return (
-    <div 
-      className="min-h-screen relative" 
+    <div
+      className="min-h-screen relative"
       style={{ ...getBackgroundStyle, fontFamily: `${fontFamily}, sans-serif` }}
     >
       {/* Loading Overlay for initial page load */}
@@ -717,350 +718,350 @@ const PublicMenu = () => {
       )}
 
       {restaurant && (
-      <div className="relative z-10 opacity-100 transition-opacity duration-300">
-        {/* Restaurant Header with smooth fade-in */}
-        <div className={`text-center pt-12 pb-8 ${dataLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500 delay-200`}>
-          <div className="mb-6">
-            <div 
-              className="w-20 h-20 rounded-full overflow-hidden border-4 mb-4 mx-auto" 
-              style={{ borderColor: brandColor || undefined }}
-            >
-              {(selectedMenuGroup?.logo_url || restaurant.logo_url) ? (
-                <SafeImage 
-                  src={selectedMenuGroup?.logo_url || restaurant.logo_url} 
-                  alt={selectedMenuGroup?.name || restaurant.name} 
-                  className="w-full h-full object-cover" 
-                />
-              ) : (
-                <div 
-                  className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gray-200 text-gray-700"
-                  style={{ backgroundColor: brandColor || undefined }}
-                >
-                  {(selectedMenuGroup?.name || restaurant.name).charAt(0)}
-                </div>
-              )}
-            </div>
-          </div>
-          <h1 
-            className="text-2xl font-bold mb-2 text-gray-900" 
-            style={{ 
-              color: textColor || undefined,
-              textShadow: selectedMenuGroup?.header_text_shadow ? '2px 2px 4px rgba(0,0,0,0.5)' : undefined
-            }}
-          >
-            {restaurant.name}
-          </h1>
-        </div>
-
-        {/* Menu Group Selector - COMPLETELY DISABLED */}
-        {false && menuGroups.length > 1 && (
-          <div className="px-4 mb-4">
-            <div className="max-w-md mx-auto">
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {menuGroups.map((group) => {
-                  const isActive = selectedMenuGroup?.id === group.id;
-                  return (
-                    <button
-                      key={group.id}
-                      onClick={() => setSelectedMenuGroup(group)}
-                      className={`px-6 py-2 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 rounded-lg border-2`}
-                      style={{
-                        backgroundColor: isActive ? (brandColor || '#3B82F6') : '#FFFFFF',
-                        color: isActive ? '#FFFFFF' : (brandColor || '#3B82F6'),
-                        borderColor: brandColor || '#3B82F6'
-                      }}
-                    >
-                      {group.name}
-                    </button>
-                  );
-                })}
+        <div className="relative z-10 opacity-100 transition-opacity duration-300">
+          {/* Restaurant Header with smooth fade-in */}
+          <div className={`text-center pt-12 pb-8 ${dataLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500 delay-200`}>
+            <div className="mb-6">
+              <div
+                className="w-20 h-20 rounded-full overflow-hidden border-4 mb-4 mx-auto"
+                style={{ borderColor: brandColor || undefined }}
+              >
+                {(selectedMenuGroup?.logo_url || restaurant.logo_url) ? (
+                  <SafeImage
+                    src={selectedMenuGroup?.logo_url || restaurant.logo_url}
+                    alt={selectedMenuGroup?.name || restaurant.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gray-200 text-gray-700"
+                    style={{ backgroundColor: brandColor || undefined }}
+                  >
+                    {(selectedMenuGroup?.name || restaurant.name).charAt(0)}
+                  </div>
+                )}
               </div>
             </div>
+            <h1
+              className="text-2xl font-bold mb-2 text-gray-900"
+              style={{
+                color: textColor || undefined,
+                textShadow: selectedMenuGroup?.header_text_shadow ? '2px 2px 4px rgba(0,0,0,0.5)' : undefined
+              }}
+            >
+              {restaurant.name}
+            </h1>
           </div>
-        )}
 
-        {/* Category Navigation / Search */}
-        <div className="px-4 mb-8">
-          <div className="max-w-md mx-auto">
-            {!showSearch ? (
-              <div className="flex items-center gap-2">
-                <div className="flex gap-2 flex-1 overflow-x-auto pb-2 scrollbar-hide">
-                  {/* All Categories Button */}
-                  <button
-                    onClick={() => setSelectedCategory(null)}
-                    className={`px-6 py-2 text-sm font-medium transition-colors text-left whitespace-nowrap flex-shrink-0 ${selectedMenuGroup?.category_button_border_radius || 'rounded-lg'}`}
-                    style={{ 
-                      backgroundColor: selectedCategory === null 
-                        ? (selectedMenuGroup?.category_button_active_bg_color || brandColor)
-                        : (selectedMenuGroup?.category_button_bg_color || '#FFFFFF'),
-                      color: selectedCategory === null
-                        ? (selectedMenuGroup?.category_button_active_text_color || '#FFFFFF')
-                        : (selectedMenuGroup?.category_button_text_color || '#374151')
-                    }}
-                  >
-                    All
-                  </button>
-                  
-                  {filteredCategories.map((category) => {
-                    const isActive = category.id === selectedCategory;
-                    const categoryBg = isActive 
-                      ? (selectedMenuGroup?.category_button_active_bg_color || brandColor)
-                      : (selectedMenuGroup?.category_button_bg_color || '#FFFFFF');
-                    const categoryText = isActive
-                      ? (selectedMenuGroup?.category_button_active_text_color || '#FFFFFF')
-                      : (selectedMenuGroup?.category_button_text_color || '#374151');
-                    const categoryRadius = selectedMenuGroup?.category_button_border_radius || 'rounded-lg';
-                    
+          {/* Menu Group Selector - COMPLETELY DISABLED */}
+          {false && menuGroups.length > 1 && (
+            <div className="px-4 mb-4">
+              <div className="max-w-md mx-auto">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {menuGroups.map((group) => {
+                    const isActive = selectedMenuGroup?.id === group.id;
                     return (
                       <button
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category.id === selectedCategory ? null : category.id)}
-                        className={`px-6 py-2 text-sm font-medium transition-colors text-left whitespace-nowrap flex-shrink-0 ${categoryRadius}`}
-                        style={{ backgroundColor: categoryBg, color: categoryText }}
+                        key={group.id}
+                        onClick={() => setSelectedMenuGroup(group)}
+                        className={`px-6 py-2 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 rounded-lg border-2`}
+                        style={{
+                          backgroundColor: isActive ? (brandColor || '#3B82F6') : '#FFFFFF',
+                          color: isActive ? '#FFFFFF' : (brandColor || '#3B82F6'),
+                          borderColor: brandColor || '#3B82F6'
+                        }}
                       >
-                        {category.name}
+                        {group.name}
                       </button>
                     );
                   })}
                 </div>
-                <button
-                  onClick={() => setShowSearch(true)}
-                  className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 flex-shrink-0 text-gray-900"
-                  style={{ color: textColor || undefined }}
-                >
-                  <Search className="h-5 w-5" />
-                </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    placeholder="Search menu..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`pl-10 ${selectedMenuGroup?.search_border_radius || 'rounded-lg'}`}
-                    style={{
-                      backgroundColor: selectedMenuGroup?.search_bg_color || 'rgba(255,255,255,0.9)',
-                      color: selectedMenuGroup?.search_text_color || '#000000'
-                    }}
-                    autoFocus
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    setShowSearch(false);
-                    setSearchQuery("");
-                  }}
-                  className="p-2 rounded-full bg-white/20 backdrop-blur-sm"
-                  style={{ color: textColor }}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* Menu Items with staggered fade-in */}
-        <div className="px-4 pb-24">
-          <div className="max-w-md mx-auto space-y-4">
-            {dataLoaded ? (
-              filteredItems.length === 0 ? (
-                <div className={`text-center py-16 opacity-100 transition-opacity duration-500 delay-300`}>
-                  <div className="text-6xl mb-4">🍽️</div>
-                  <h3 className="text-xl font-medium mb-2" style={{ color: textColor }}>
-                    No items available
-                  </h3>
-                  <p className="text-sm text-gray-500">Check back later for updates</p>
+          {/* Category Navigation / Search */}
+          <div className="px-4 mb-8">
+            <div className="max-w-md mx-auto">
+              {!showSearch ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-2 flex-1 overflow-x-auto pb-2 scrollbar-hide">
+                    {/* All Categories Button */}
+                    <button
+                      onClick={() => setSelectedCategory(null)}
+                      className={`px-6 py-2 text-sm font-medium transition-colors text-left whitespace-nowrap flex-shrink-0 ${selectedMenuGroup?.category_button_border_radius || 'rounded-lg'}`}
+                      style={{
+                        backgroundColor: selectedCategory === null
+                          ? (selectedMenuGroup?.category_button_active_bg_color || brandColor)
+                          : (selectedMenuGroup?.category_button_bg_color || '#FFFFFF'),
+                        color: selectedCategory === null
+                          ? (selectedMenuGroup?.category_button_active_text_color || '#FFFFFF')
+                          : (selectedMenuGroup?.category_button_text_color || '#374151')
+                      }}
+                    >
+                      All
+                    </button>
+
+                    {filteredCategories.map((category) => {
+                      const isActive = category.id === selectedCategory;
+                      const categoryBg = isActive
+                        ? (selectedMenuGroup?.category_button_active_bg_color || brandColor)
+                        : (selectedMenuGroup?.category_button_bg_color || '#FFFFFF');
+                      const categoryText = isActive
+                        ? (selectedMenuGroup?.category_button_active_text_color || '#FFFFFF')
+                        : (selectedMenuGroup?.category_button_text_color || '#374151');
+                      const categoryRadius = selectedMenuGroup?.category_button_border_radius || 'rounded-lg';
+
+                      return (
+                        <button
+                          key={category.id}
+                          onClick={() => setSelectedCategory(category.id === selectedCategory ? null : category.id)}
+                          className={`px-6 py-2 text-sm font-medium transition-colors text-left whitespace-nowrap flex-shrink-0 ${categoryRadius}`}
+                          style={{ backgroundColor: categoryBg, color: categoryText }}
+                        >
+                          {category.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setShowSearch(true)}
+                    className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 flex-shrink-0 text-gray-900"
+                    style={{ color: textColor || undefined }}
+                  >
+                    <Search className="h-5 w-5" />
+                  </button>
                 </div>
               ) : (
-                filteredItems.map((item, index) => (
-                  <div 
-                    key={item.id}
-                    className={`opacity-100 transition-all duration-500 delay-${index * 50} ease-out transform translate-y-0`}
-                  >
-                    <MenuItemCard
-                      item={item}
-                      variations={variations.filter(v => v.menu_item_id === item.id)}
-                      accompaniments={accompaniments.filter(a => a.menu_item_id === item.id)}
-                      onAddToCart={addToCart}
-                      onRemoveFromCart={removeFromCart}
-                      cart={cart}
-                      formatPrice={formatPrice}
-                      cardClass={getCardClass()}
-                      brandColor={brandColor}
-                      fontFamily={fontFamily}
-                      menuGroup={selectedMenuGroup}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      placeholder="Search menu..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className={`pl-10 ${selectedMenuGroup?.search_border_radius || 'rounded-lg'}`}
+                      style={{
+                        backgroundColor: selectedMenuGroup?.search_bg_color || 'rgba(255,255,255,0.9)',
+                        color: selectedMenuGroup?.search_text_color || '#000000'
+                      }}
+                      autoFocus
                     />
                   </div>
-                ))
-              )
-            ) : (
-              // Show skeleton loaders while data is being processed
-              Array.from({ length: 5 }).map((_, index) => (
-                <div 
-                  key={index}
-                  className="p-4 bg-white rounded-xl shadow-md animate-pulse"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-lg bg-gray-200" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3" />
-                    </div>
-                    <div className="w-14 h-9 bg-gray-200 rounded-lg" />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Fixed Cart Button */}
-        {cart.length > 0 && (
-          <div className="fixed bottom-4 left-4 right-4 z-50">
-            <div className="max-w-md mx-auto">
-              <button
-                onClick={() => setShowCart(true)}
-                className={`w-full py-4 px-6 ${selectedMenuGroup?.cart_button_border_radius || 'rounded-lg'} font-bold flex items-center justify-between shadow-lg bg-gray-900 text-white`}
-                style={{ 
-                  backgroundColor: selectedMenuGroup?.cart_button_bg_color || brandColor || undefined, 
-                  color: selectedMenuGroup?.cart_button_text_color || textColor || undefined
-                }}
-              >
-                <span>View Order ({cart.length})</span>
-                <span>{formatPrice(cart.reduce((sum, item) => sum + item.totalPrice, 0))}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Cart Modal */}
-        {showCart && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-            <div 
-              className={`w-full max-w-md mx-auto ${selectedMenuGroup?.cart_dialog_border_radius || 'rounded-t-2xl'} p-6 max-h-[80vh] overflow-y-auto`}
-              style={{ backgroundColor: selectedMenuGroup?.cart_dialog_bg_color || '#FFFFFF' }}
-            >
-              <div 
-                className="flex items-center justify-between mb-4 -mx-6 -mt-6 px-6 py-4 rounded-t-2xl"
-                style={{ backgroundColor: selectedMenuGroup?.cart_dialog_header_bg_color || '#f3f4f6' }}
-              >
-                <h3 
-                  className="text-lg font-bold"
-                  style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }}
-                >
-                  Your Order
-                </h3>
-                <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                  <X className="h-5 w-5" style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }} />
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <Label 
-                  htmlFor="customerName"
-                  style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }}
-                >
-                  Your Name
-                </Label>
-                <Input
-                  id="customerName"
-                  placeholder="Enter your name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {cart.map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="flex items-center justify-between p-3 rounded-lg"
-                    style={{ backgroundColor: selectedMenuGroup?.cart_item_bg_color || '#f9fafb' }}
+                  <button
+                    onClick={() => {
+                      setShowSearch(false);
+                      setSearchQuery("");
+                    }}
+                    className="p-2 rounded-full bg-white/20 backdrop-blur-sm"
+                    style={{ color: textColor }}
                   >
-                    <div className="flex-1">
-                      <h4 
-                        className="font-medium"
-                        style={{ color: selectedMenuGroup?.cart_item_text_color || '#000000' }}
-                      >
-                        {item.name}
-                      </h4>
-                      {item.variation && (
-                        <p 
-                          className="text-sm"
-                          style={{ color: selectedMenuGroup?.cart_item_text_color || '#6b7280' }}
-                        >
-                          Size: {item.variation.name}
-                        </p>
-                      )}
-                      {item.accompaniments.length > 0 && (
-                        <p 
-                          className="text-sm"
-                          style={{ color: selectedMenuGroup?.cart_item_text_color || '#6b7280' }}
-                        >
-                          Add-ons: {item.accompaniments.map(a => a.name).join(", ")}
-                        </p>
-                      )}
-                      <p 
-                        className="text-sm font-medium"
-                        style={{ color: selectedMenuGroup?.cart_item_text_color || '#000000' }}
-                      >
-                        {formatPrice(item.totalPrice)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-2 hover:bg-red-50 rounded-full"
-                      style={{ color: selectedMenuGroup?.cart_remove_button_color || '#ef4444' }}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t pt-4 mb-4" style={{ borderColor: selectedMenuGroup?.cart_border_color || '#e5e7eb' }}>
-                <div 
-                  className="flex justify-between items-center text-lg font-bold"
-                  style={{ color: selectedMenuGroup?.cart_total_text_color || '#000000' }}
-                >
-                  <span>Total:</span>
-                  <span>{formatPrice(cart.reduce((sum, item) => sum + item.totalPrice, 0))}</span>
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-              </div>
+              )}
+            </div>
+          </div>
 
-              <div className="flex gap-3">
+          {/* Menu Items with staggered fade-in */}
+          <div className="px-4 pb-24">
+            <div className="max-w-md mx-auto space-y-4">
+              {dataLoaded ? (
+                filteredItems.length === 0 ? (
+                  <div className={`text-center py-16 opacity-100 transition-opacity duration-500 delay-300`}>
+                    <div className="text-6xl mb-4">🍽️</div>
+                    <h3 className="text-xl font-medium mb-2" style={{ color: textColor }}>
+                      No items available
+                    </h3>
+                    <p className="text-sm text-gray-500">Check back later for updates</p>
+                  </div>
+                ) : (
+                  filteredItems.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`opacity-100 transition-all duration-500 delay-${index * 50} ease-out transform translate-y-0`}
+                    >
+                      <MenuItemCard
+                        item={item}
+                        variations={variations.filter(v => v.menu_item_id === item.id)}
+                        accompaniments={accompaniments.filter(a => a.menu_item_id === item.id)}
+                        onAddToCart={addToCart}
+                        onRemoveFromCart={removeFromCart}
+                        cart={cart}
+                        formatPrice={formatPrice}
+                        cardClass={getCardClass()}
+                        brandColor={brandColor}
+                        fontFamily={fontFamily}
+                        menuGroup={selectedMenuGroup}
+                      />
+                    </div>
+                  ))
+                )
+              ) : (
+                // Show skeleton loaders while data is being processed
+                Array.from({ length: 5 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-white rounded-xl shadow-md animate-pulse"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-gray-200" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3" />
+                      </div>
+                      <div className="w-14 h-9 bg-gray-200 rounded-lg" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Fixed Cart Button */}
+          {cart.length > 0 && (
+            <div className="fixed bottom-4 left-4 right-4 z-50">
+              <div className="max-w-md mx-auto">
                 <button
-                  onClick={() => setShowCart(false)}
-                  className="flex-1 py-3 px-4 border rounded-lg font-medium hover:opacity-90"
-                  style={{ 
-                    backgroundColor: selectedMenuGroup?.cart_continue_button_bg || '#ffffff',
-                    borderColor: '#d1d5db',
-                    color: selectedMenuGroup?.cart_continue_button_text_color || '#000000'
+                  onClick={() => setShowCart(true)}
+                  className={`w-full py-4 px-6 ${selectedMenuGroup?.cart_button_border_radius || 'rounded-lg'} font-bold flex items-center justify-between shadow-lg bg-gray-900 text-white`}
+                  style={{
+                    backgroundColor: selectedMenuGroup?.cart_button_bg_color || brandColor || undefined,
+                    color: selectedMenuGroup?.cart_button_text_color || textColor || undefined
                   }}
                 >
-                  Continue Shopping
-                </button>
-                <button
-                  onClick={formatWhatsAppOrder}
-                  className={`flex-1 py-3 px-4 ${selectedMenuGroup?.whatsapp_button_border_radius || 'rounded-lg'} font-medium flex items-center justify-center gap-2 bg-green-600 text-white`}
-                  style={{ 
-                    backgroundColor: selectedMenuGroup?.whatsapp_button_bg_color || brandColor || undefined, 
-                    color: selectedMenuGroup?.whatsapp_button_text_color || textColor || undefined
-                  }}
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Order Now
+                  <span>View Order ({cart.length})</span>
+                  <span>{formatPrice(cart.reduce((sum, item) => sum + item.totalPrice, 0))}</span>
                 </button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* Cart Modal */}
+          {showCart && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+              <div
+                className={`w-full max-w-md mx-auto ${selectedMenuGroup?.cart_dialog_border_radius || 'rounded-t-2xl'} p-6 max-h-[80vh] overflow-y-auto`}
+                style={{ backgroundColor: selectedMenuGroup?.cart_dialog_bg_color || '#FFFFFF' }}
+              >
+                <div
+                  className="flex items-center justify-between mb-4 -mx-6 -mt-6 px-6 py-4 rounded-t-2xl"
+                  style={{ backgroundColor: selectedMenuGroup?.cart_dialog_header_bg_color || '#f3f4f6' }}
+                >
+                  <h3
+                    className="text-lg font-bold"
+                    style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }}
+                  >
+                    Your Order
+                  </h3>
+                  <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                    <X className="h-5 w-5" style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }} />
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <Label
+                    htmlFor="customerName"
+                    style={{ color: selectedMenuGroup?.cart_dialog_header_text_color || '#000000' }}
+                  >
+                    Your Name
+                  </Label>
+                  <Input
+                    id="customerName"
+                    placeholder="Enter your name"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {cart.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 rounded-lg"
+                      style={{ backgroundColor: selectedMenuGroup?.cart_item_bg_color || '#f9fafb' }}
+                    >
+                      <div className="flex-1">
+                        <h4
+                          className="font-medium"
+                          style={{ color: selectedMenuGroup?.cart_item_text_color || '#000000' }}
+                        >
+                          {item.name}
+                        </h4>
+                        {item.variation && (
+                          <p
+                            className="text-sm"
+                            style={{ color: selectedMenuGroup?.cart_item_text_color || '#6b7280' }}
+                          >
+                            Size: {item.variation.name}
+                          </p>
+                        )}
+                        {item.accompaniments.length > 0 && (
+                          <p
+                            className="text-sm"
+                            style={{ color: selectedMenuGroup?.cart_item_text_color || '#6b7280' }}
+                          >
+                            Add-ons: {item.accompaniments.map(a => a.name).join(", ")}
+                          </p>
+                        )}
+                        <p
+                          className="text-sm font-medium"
+                          style={{ color: selectedMenuGroup?.cart_item_text_color || '#000000' }}
+                        >
+                          {formatPrice(item.totalPrice)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="p-2 hover:bg-red-50 rounded-full"
+                        style={{ color: selectedMenuGroup?.cart_remove_button_color || '#ef4444' }}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t pt-4 mb-4" style={{ borderColor: selectedMenuGroup?.cart_border_color || '#e5e7eb' }}>
+                  <div
+                    className="flex justify-between items-center text-lg font-bold"
+                    style={{ color: selectedMenuGroup?.cart_total_text_color || '#000000' }}
+                  >
+                    <span>Total:</span>
+                    <span>{formatPrice(cart.reduce((sum, item) => sum + item.totalPrice, 0))}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowCart(false)}
+                    className="flex-1 py-3 px-4 border rounded-lg font-medium hover:opacity-90"
+                    style={{
+                      backgroundColor: selectedMenuGroup?.cart_continue_button_bg || '#ffffff',
+                      borderColor: '#d1d5db',
+                      color: selectedMenuGroup?.cart_continue_button_text_color || '#000000'
+                    }}
+                  >
+                    Continue Shopping
+                  </button>
+                  <button
+                    onClick={formatWhatsAppOrder}
+                    className={`flex-1 py-3 px-4 ${selectedMenuGroup?.whatsapp_button_border_radius || 'rounded-lg'} font-medium flex items-center justify-center gap-2 bg-green-600 text-white`}
+                    style={{
+                      backgroundColor: selectedMenuGroup?.whatsapp_button_bg_color || brandColor || undefined,
+                      color: selectedMenuGroup?.whatsapp_button_text_color || textColor || undefined
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Order Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Cache Status Indicator (only shows in debug mode) */}
@@ -1070,15 +1071,15 @@ const PublicMenu = () => {
 };
 
 // Lazy loading implementation for MenuItemCard
-const MenuItemCard = ({ 
-  item, 
-  variations, 
-  accompaniments, 
-  onAddToCart, 
+const MenuItemCard = ({
+  item,
+  variations,
+  accompaniments,
+  onAddToCart,
   onRemoveFromCart,
   cart,
-  formatPrice, 
-  cardClass, 
+  formatPrice,
+  cardClass,
   brandColor,
   fontFamily,
   menuGroup
@@ -1206,11 +1207,11 @@ const MenuItemCard = ({
   const itemDescSize = menuGroup?.item_description_font_size || 'text-sm';
 
   return (
-    <div 
+    <div
       ref={cardRef}
       className={`${cardPadding} ${cardBorderRadius} shadow-md`}
-      style={{ 
-        fontFamily, 
+      style={{
+        fontFamily,
         backgroundColor: cardBg,
         borderColor: cardBorderColor,
         borderWidth: cardBorderColor ? '1px' : undefined,
@@ -1225,14 +1226,14 @@ const MenuItemCard = ({
         )}
 
         <div className="flex-1 min-w-0">
-          <h3 
+          <h3
             className={`${itemNameSize} ${itemNameWeight} text-gray-900`}
             style={{ color: itemNameColor || undefined }}
           >
             {item.name}
           </h3>
           {item.description && (
-            <p 
+            <p
               className={`${itemDescSize} text-gray-500 truncate`}
               style={{ color: itemDescColor || undefined }}
             >

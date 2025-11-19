@@ -41,6 +41,7 @@ interface SubscriptionFeatures {
   multipleRestaurants: boolean;
   qrCodes: boolean;
   publicMenuAccess: boolean;
+  aiImport: boolean;
 }
 
 export const useSubscription = () => {
@@ -54,6 +55,7 @@ export const useSubscription = () => {
     multipleRestaurants: false,
     qrCodes: false,
     publicMenuAccess: false,
+    aiImport: false,
   });
   const [limits, setLimits] = useState<SubscriptionLimits>({
     maxRestaurants: 1, // Free tier: 1 restaurant
@@ -71,7 +73,7 @@ export const useSubscription = () => {
   const loadSubscriptionData = async () => {
     try {
       setLoading(true);
-      
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
@@ -120,6 +122,7 @@ export const useSubscription = () => {
           multipleRestaurants: subscriptionData.package.feature_multiple_restaurants,
           qrCodes: subscriptionData.package.feature_qr_codes,
           publicMenuAccess: subscriptionData.package.feature_public_menu_access,
+          aiImport: true, // Enable AI import for all paid plans
         });
         setLimits({
           maxRestaurants: subscriptionData.package.max_restaurants || 999,
@@ -138,7 +141,8 @@ export const useSubscription = () => {
           prioritySupport: false,
           multipleRestaurants: false,
           qrCodes: true, // Basic QR codes allowed on free tier
-          publicMenuAccess: true, // Basic menu access allowed
+          publicMenuAccess: false, // Public menu disabled for free tier
+          aiImport: false,
         });
         setLimits({
           maxRestaurants: 1,
@@ -194,13 +198,13 @@ export const useSubscription = () => {
 
   const getSubscriptionStatus = (): 'active' | 'expired' | 'none' => {
     if (!subscription) return 'none';
-    
+
     if (subscription.expires_at) {
       const expiryDate = new Date(subscription.expires_at);
       const now = new Date();
       if (expiryDate < now) return 'expired';
     }
-    
+
     return subscription.status === 'active' ? 'active' : 'none';
   };
 
