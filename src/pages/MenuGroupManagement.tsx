@@ -11,6 +11,8 @@ import { MenuItemCard } from "@/components/ui/menu-item-card";
 import { ModernDashboardLayout } from "@/components/ModernDashboardLayout";
 import { Store, UtensilsCrossed, FolderTree, Plus, Sparkles, Search, Filter, X } from "lucide-react";
 import { AIImageGenerator } from "@/components/menu/AIImageGenerator";
+import SubscriptionGuard from "@/components/SubscriptionGuard";
+import { useSubscription } from "@/hooks/useSubscription";
 import type { Database } from "@/integrations/supabase/types";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -28,14 +30,14 @@ type MenuItem = Tables<"menu_items"> & {
 };
 
 export default function MenuGroupManagement() {
-  const { slug: restaurantSlug, groupSlug } = useParams<{ 
-    slug?: string; 
+  const { slug: restaurantSlug, groupSlug } = useParams<{
+    slug?: string;
     groupSlug?: string;
   }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [restaurant, setRestaurant] = useState<any>(null);
   const [menuGroup, setMenuGroup] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -58,7 +60,7 @@ export default function MenuGroupManagement() {
     name: "",
     description: "",
   });
-  
+
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -75,7 +77,7 @@ export default function MenuGroupManagement() {
   }, [searchQuery]);
 
   const loadStartTime = useRef<number>(0);
-  
+
   const loadData = useCallback(async (abortSignal?: AbortSignal) => {
     try {
       setLoading(true);
@@ -114,11 +116,11 @@ export default function MenuGroupManagement() {
           .limit(1);
 
         if (groupError) throw groupError;
-        
+
         if (!groupDataBySlug || groupDataBySlug.length === 0) {
           throw new Error("Menu group not found");
         }
-        
+
         groupData = groupDataBySlug[0];
 
         const { data: restaurantDataById, error: restaurantError } = await supabase
@@ -140,17 +142,17 @@ export default function MenuGroupManagement() {
 
       if (categoriesResult.error) throw categoriesResult.error;
       const categoriesData = categoriesResult.data || [];
-      
+
       // Get category IDs from the categories data
       const categoryIds = categoriesData.map(c => c.id);
-      
+
       if (categoryIds.length === 0) {
         setRestaurant(restaurantData);
         setMenuGroup(groupData);
         setCategories(categoriesData);
         setItems([]);
         setLoading(false);
-        
+
         // Track performance for empty categories
         const loadTime = performance.now() - loadStartTime.current;
         PerformanceMonitor.trackPageLoad(`MenuGroup-${groupData.slug}`, loadTime);
@@ -164,7 +166,7 @@ export default function MenuGroupManagement() {
         .select("*")
         .in("category_id", categoryIds)
         .eq("restaurant_id", restaurantData.id)
-        .order("display_order", { ascending: true});
+        .order("display_order", { ascending: true });
 
       if (itemsResult.error) throw itemsResult.error;
       const itemsData = itemsResult.data || [];
@@ -177,7 +179,7 @@ export default function MenuGroupManagement() {
         setCategories(categoriesData);
         setItems([]);
         setLoading(false);
-        
+
         // Track performance for empty items
         const loadTime = performance.now() - loadStartTime.current;
         PerformanceMonitor.trackPageLoad(`MenuGroup-${groupData.slug}`, loadTime);
@@ -192,7 +194,7 @@ export default function MenuGroupManagement() {
       // Fetch variations and accompaniments sequentially  
       let variationsData: any[] = [];
       let variationsError: any = null;
-      
+
       // Batch fetch variations to avoid TypeScript deep instantiation issue
       if (itemIds.length > 0) {
         const result = await (supabase as any)
@@ -202,10 +204,10 @@ export default function MenuGroupManagement() {
         variationsData = result.data || [];
         variationsError = result.error;
       }
-      
+
       let accompanimentsData: any[] = [];
       let accompanimentsError: any = null;
-      
+
       const accompanimentsQuery = (supabase as any)
         .from("accompaniments")
         .select("*")
@@ -249,7 +251,7 @@ export default function MenuGroupManagement() {
       setCategories(categoriesData);
       setItems(itemsWithRelations);
       setLoading(false); // Set loading to false on success
-      
+
       // Track performance
       const loadTime = performance.now() - loadStartTime.current;
       PerformanceMonitor.trackPageLoad(`MenuGroup-${groupData.slug}`, loadTime);
@@ -272,7 +274,7 @@ export default function MenuGroupManagement() {
   useEffect(() => {
     const abortController = new AbortController();
     let isMounted = true;
-    
+
     const load = async () => {
       // Support both URL patterns:
       // Old: /dashboard/restaurant/:slug/group/:groupSlug
@@ -286,14 +288,14 @@ export default function MenuGroupManagement() {
         if (isMounted) setLoading(false);
       }
     };
-    
+
     load().catch(err => {
       if (err.name === 'AbortError') {
         return;
       }
       if (isMounted) setLoading(false);
     });
-    
+
     return () => {
       abortController.abort();
       isMounted = false;
@@ -334,7 +336,7 @@ export default function MenuGroupManagement() {
           .from("item_variations")
           .select("*")
           .in("menu_item_id", itemIds),
-        
+
         (supabase as any)
           .from("accompaniments")
           .select("*")
@@ -408,7 +410,7 @@ export default function MenuGroupManagement() {
     // Search filter
     if (debouncedSearch.trim()) {
       const search = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(search) ||
         item.description?.toLowerCase().includes(search)
       );
@@ -416,13 +418,13 @@ export default function MenuGroupManagement() {
 
     // Availability filter
     if (availabilityFilter !== "all") {
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         availabilityFilter === "available" ? item.is_available : !item.is_available
       );
     }
 
     // Price range filter
-    filtered = filtered.filter(item => 
+    filtered = filtered.filter(item =>
       item.base_price >= priceRange[0] && item.base_price <= priceRange[1]
     );
 
@@ -436,16 +438,16 @@ export default function MenuGroupManagement() {
     setPriceRange([priceExtent.min, priceExtent.max]);
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory !== "all" || availabilityFilter !== "all" || 
+  const hasActiveFilters = searchQuery || selectedCategory !== "all" || availabilityFilter !== "all" ||
     priceRange[0] !== priceExtent.min || priceRange[1] !== priceExtent.max;
 
   const formatPrice = (price: number) => {
     // Use menu group's currency if available, or fallback to restaurant's primary_currency or default "RWF"
     const currencyCode = menuGroup?.currency || restaurant?.primary_currency || "RWF";
-    
+
     // Log currency for debugging
     console.log('Using currency for price formatting:', currencyCode);
-    
+
     // Get appropriate locale based on currency
     let locale = "en";
     if (currencyCode === "RWF") locale = "en-RW";
@@ -455,7 +457,7 @@ export default function MenuGroupManagement() {
     else if (currencyCode === "USD") locale = "en-US";
     else if (currencyCode === "EUR") locale = "en-DE";
     else if (currencyCode === "GBP") locale = "en-GB";
-    
+
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currencyCode,
@@ -651,7 +653,7 @@ export default function MenuGroupManagement() {
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(`/dashboard/restaurant/${restaurant?.slug}/group/${menuGroup?.slug}/settings`)}>            
+            <Button variant="outline" onClick={() => navigate(`/dashboard/restaurant/${restaurant?.slug}/group/${menuGroup?.slug}/settings`)}>
               Manage Settings
             </Button>
             <Button onClick={openAddItemDialog}>
@@ -813,8 +815,8 @@ export default function MenuGroupManagement() {
                 {hasActiveFilters
                   ? "Try adjusting your search or filter criteria"
                   : selectedCategory === "all"
-                  ? "Add your first menu item to get started"
-                  : "No items in this category yet"}
+                    ? "Add your first menu item to get started"
+                    : "No items in this category yet"}
               </p>
               {hasActiveFilters ? (
                 <Button onClick={clearAllFilters} variant="outline">
@@ -838,23 +840,23 @@ export default function MenuGroupManagement() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredItems.map((item) => (
-              <MenuItemCard
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                description={item.description}
-                base_price={item.base_price}
-                image_url={item.image_url}
-                is_available={item.is_available}
-                is_accompaniment={item.is_accompaniment}
-                restaurant_id={restaurant?.id!}
-                item_variations={item.item_variations || []}
-                accompaniments={item.accompaniments || []}
-                onEdit={() => editItem(item)}
-                onDelete={() => deleteItem(item.id)}
-                onRefresh={() => fetchItems()}
-                formatPrice={formatPrice}
-              />
+                <MenuItemCard
+                  key={item.id}
+                  id={item.id}
+                  name={item.name}
+                  description={item.description}
+                  base_price={item.base_price}
+                  image_url={item.image_url}
+                  is_available={item.is_available}
+                  is_accompaniment={item.is_accompaniment}
+                  restaurant_id={restaurant?.id!}
+                  item_variations={item.item_variations || []}
+                  accompaniments={item.accompaniments || []}
+                  onEdit={() => editItem(item)}
+                  onDelete={() => deleteItem(item.id)}
+                  onRefresh={() => fetchItems()}
+                  formatPrice={formatPrice}
+                />
               ))}
             </div>
           </>

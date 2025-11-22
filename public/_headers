@@ -1,0 +1,53 @@
+# Cloudflare Pages - Cache and Asset Optimization
+
+# Cache static assets for 1 year (they have content hashes)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+# Cache images for 1 year
+/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+/*.jpeg
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+/*.webp
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+# Cache fonts for 1 year
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+# HTML files - cache for 1 hour with revalidation
+/*.html
+  Cache-Control: public, max-age=3600, must-revalidate
+  CDN-Cache-Control: public, max-age=3600
+
+# Service worker - don't cache
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  CDN-Cache-Control: no-store
+
+# Security headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

@@ -22,12 +22,12 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
   fallback,
   showUpgradeCard = true
 }) => {
-  const { 
-    features, 
-    limits, 
-    loading, 
-    checkFeatureAccess, 
-    checkLimitAccess, 
+  const {
+    features,
+    limits,
+    loading,
+    checkFeatureAccess,
+    checkLimitAccess,
     hasActiveSubscription,
     showUpgradePrompt,
     showLimitPrompt
@@ -44,7 +44,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
   // Check feature access
   if (feature && !checkFeatureAccess(feature)) {
     if (fallback) return <>{fallback}</>;
-    
+
     if (!showUpgradeCard) {
       return null;
     }
@@ -66,16 +66,16 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
             This feature is only available with a paid subscription plan. Upgrade to unlock advanced functionality and grow your restaurant business.
           </p>
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={() => showUpgradePrompt(getFeatureName(feature))}
               className="bg-orange-600 hover:bg-orange-700"
             >
               <Zap className="h-4 w-4 mr-1" />
               Upgrade Now
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={() => window.open('/dashboard', '_self')}
             >
@@ -90,7 +90,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
   // Check limit access
   if (limitType && !checkLimitAccess(limitType, requestedCount)) {
     if (fallback) return <>{fallback}</>;
-    
+
     if (!showUpgradeCard) {
       return null;
     }
@@ -111,23 +111,23 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-red-700 mb-4">
-            You've reached your {limitType} limit ({current}/{max}). 
-            {hasActiveSubscription() 
-              ? ' Contact support to increase your limits.' 
+            You've reached your {limitType} limit ({current}/{max}).
+            {hasActiveSubscription()
+              ? ' Contact support to increase your limits.'
               : ' Upgrade to a paid plan to add more.'
             }
           </p>
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={() => showLimitPrompt(limitType, current, max)}
               className="bg-red-600 hover:bg-red-700"
             >
               <Crown className="h-4 w-4 mr-1" />
               {hasActiveSubscription() ? 'Contact Support' : 'Upgrade Plan'}
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={() => window.open('/dashboard', '_self')}
             >
@@ -153,6 +153,7 @@ const getFeatureName = (feature: string): string => {
     multipleRestaurants: 'Multiple Restaurants',
     qrCodes: 'QR Code Generation',
     publicMenuAccess: 'Public Menu Access',
+    aiImport: 'AI Menu Import',
   };
   return featureNames[feature] || 'Premium Feature';
 };

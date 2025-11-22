@@ -84,35 +84,22 @@ const TablesAndQR = () => {
     location: "",
   });
   const [saving, setSaving] = useState(false);
-  
+
   // Restaurant management
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("");
   const [currentRestaurant, setCurrentRestaurant] = useState<Restaurant | null>(null);
-  
+
   // Determine default tab based on URL
   const getDefaultTab = () => {
     return location.pathname === "/dashboard/qr" ? "qr-codes" : "tables";
   };
   const [activeTab, setActiveTab] = useState(getDefaultTab());
-  
+
   const { toast } = useToast();
   const { restaurantId, loading: restaurantLoading } = useRestaurant();
 
-  // Load all restaurants when component mounts
-  useEffect(() => {
-    if (restaurantId) {
-      loadRestaurants();
-    }
-  }, [restaurantId]);
 
-  // Load data when selected restaurant changes
-  useEffect(() => {
-    console.log("selectedRestaurantId changed to:", selectedRestaurantId);
-    if (selectedRestaurantId) {
-      loadData(selectedRestaurantId);
-    }
-  }, [selectedRestaurantId]);
 
   // Update tab when URL changes
   useEffect(() => {
@@ -133,7 +120,7 @@ const TablesAndQR = () => {
       if (error) throw error;
 
       setRestaurants(data || []);
-      
+
       // Auto-select the first restaurant or the one from useRestaurant hook
       if (data && data.length > 0) {
         const defaultRestaurant = data.find(r => r.id === restaurantId) || data[0];
@@ -168,12 +155,12 @@ const TablesAndQR = () => {
       console.log("loadData called with empty restaurantId");
       return;
     }
-    
+
     console.log("Loading data for restaurant:", targetRestaurantId);
-    
+
     try {
       setLoading(true);
-      
+
       // Load restaurant info, tables, and saved QR codes in parallel
       // @ts-ignore - Supabase type generation issue
       const [restaurantResult, tablesResult, qrCodesResult] = await Promise.all([
@@ -183,13 +170,13 @@ const TablesAndQR = () => {
           .eq("id", targetRestaurantId)
           .single(),
         // @ts-ignore - tables not in generated types
-        supabase
+        (supabase as any)
           .from("tables")
           .select("*")
           .eq("restaurant_id", targetRestaurantId)
           .order("name"),
         // @ts-ignore - saved_qr_codes not in generated types
-        supabase
+        (supabase as any)
           .from("saved_qr_codes")
           .select("*")
           .eq("restaurant_id", targetRestaurantId)
@@ -218,6 +205,21 @@ const TablesAndQR = () => {
       setLoading(false);
     }
   };
+
+  // Load all restaurants when component mounts
+  useEffect(() => {
+    if (restaurantId) {
+      loadRestaurants();
+    }
+  }, [restaurantId]);
+
+  // Load data when selected restaurant changes
+  useEffect(() => {
+    console.log("selectedRestaurantId changed to:", selectedRestaurantId);
+    if (selectedRestaurantId) {
+      loadData(selectedRestaurantId);
+    }
+  }, [selectedRestaurantId]);
 
   const generateSlug = (name: string) => {
     return name
@@ -272,7 +274,7 @@ const TablesAndQR = () => {
 
       if (editingTable) {
         // @ts-ignore - tables not in generated types
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("tables")
           .update({
             name: formData.name,
@@ -288,7 +290,7 @@ const TablesAndQR = () => {
         });
       } else {
         // @ts-ignore - tables not in generated types
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("tables")
           .insert({
             restaurant_id: selectedRestaurantId,
@@ -325,7 +327,7 @@ const TablesAndQR = () => {
 
     try {
       // @ts-ignore - tables not in generated types
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("tables")
         .delete()
         .eq("id", table.id);
@@ -370,7 +372,7 @@ const TablesAndQR = () => {
     try {
       setGenerating(true);
       const selectedTable = tables.find(t => t.id === selectedTableId);
-      
+
       if (!selectedTable) return;
 
       const menuUrl = `${BASE_URL}/menu/${restaurantSlug}/${selectedTable.slug}`;
@@ -380,7 +382,7 @@ const TablesAndQR = () => {
 
       // Save to database (table_id is required, type must be 'single', 'multi', or 'full')
       // @ts-ignore - saved_qr_codes not in generated types
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("saved_qr_codes")
         .insert({
           restaurant_id: selectedRestaurantId,
@@ -435,7 +437,7 @@ const TablesAndQR = () => {
 
     try {
       // @ts-ignore - saved_qr_codes not in generated types
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("saved_qr_codes")
         .delete()
         .eq("id", qrCode.id);
@@ -645,8 +647,8 @@ const TablesAndQR = () => {
                     </Select>
                   </div>
                   <div className="flex items-end">
-                    <Button 
-                      onClick={generateQRCode} 
+                    <Button
+                      onClick={generateQRCode}
                       disabled={!selectedTableId || generating}
                     >
                       {generating ? "Generating..." : "Generate QR Code"}
@@ -693,8 +695,8 @@ const TablesAndQR = () => {
                       <CardContent className="p-4 space-y-3">
                         {/* QR Code Image */}
                         <div className="bg-white p-3 rounded-lg border">
-                          <img 
-                            src={qrCode.qr_code_data} 
+                          <img
+                            src={qrCode.qr_code_data}
                             alt={qrCode.name}
                             className="w-full h-auto"
                           />
